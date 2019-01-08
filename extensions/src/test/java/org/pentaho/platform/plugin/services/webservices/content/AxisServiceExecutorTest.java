@@ -14,7 +14,7 @@
  * See the GNU Lesser General Public License for more details.
  *
  *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
+ * Copyright (c) 2002-2019 Hitachi Vantara. All rights reserved.
  *
  */
 
@@ -30,6 +30,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.mockrunner.mock.web.MockServletConfig;
+import com.mockrunner.mock.web.MockServletContext;
 import org.apache.axis2.context.ConfigurationContext;
 import org.apache.axis2.description.TransportInDescription;
 import org.apache.axis2.description.TransportOutDescription;
@@ -55,7 +57,7 @@ import com.mockrunner.mock.web.MockHttpServletResponse;
 public class AxisServiceExecutorTest {
 
   private static final String BASE_URL = "http://testhost:testport/testcontent";
-  private static final String DEAFULT_TRANSPOT_PROTOCOL = "http";
+  private static final String DEFAULT_TRANSPORT_PROTOCOL = "http";
   private static final String REMOTE_ADDRESS = "127.0.0.1";
 
   private ByteArrayOutputStream out;
@@ -72,12 +74,12 @@ public class AxisServiceExecutorTest {
 
     serviceSetup.loadServices();
 
-    TransportInDescription tIn = new TransportInDescription( DEAFULT_TRANSPOT_PROTOCOL );
+    TransportInDescription tIn = new TransportInDescription( DEFAULT_TRANSPORT_PROTOCOL );
     StubTransportListener receiver = new StubTransportListener();
     tIn.setReceiver( receiver );
     axisCfg.addTransportIn( tIn );
 
-    TransportOutDescription tOut = new TransportOutDescription( DEAFULT_TRANSPOT_PROTOCOL );
+    TransportOutDescription tOut = new TransportOutDescription( DEFAULT_TRANSPORT_PROTOCOL );
     StubTransportSender sender = new StubTransportSender();
     tOut.setSender( sender );
     axisCfg.addTransportOut( tOut );
@@ -112,6 +114,9 @@ public class AxisServiceExecutorTest {
 
     MockHttpServletRequest request = new MockHttpServletRequest();
     MockHttpServletResponse response = new MockHttpServletResponse();
+    MockServletConfig config = new MockServletConfig();
+    MockServletContext context = new MockServletContext();
+    config.setServletContext( context );
 
     request.setMethod( "GET" );
     request.setRequestURI( "/pentaho/content/ws-run/StubService/getString" );
@@ -120,6 +125,7 @@ public class AxisServiceExecutorTest {
 
     pathParams.setParameter( "httprequest", request );
     pathParams.setParameter( "httpresponse", response );
+    pathParams.setParameter( "servletconfig", config );
 
     try {
       StubTransportSender.transportOutStr = null;
@@ -148,6 +154,10 @@ public class AxisServiceExecutorTest {
     MockHttpServletRequest request = new MockHttpServletRequest();
     MockHttpServletResponse response = new MockHttpServletResponse();
 
+    MockServletConfig config = new MockServletConfig();
+    MockServletContext context = new MockServletContext();
+    config.setServletContext( context );
+
     request.setMethod( "GET" );
     request.setRequestURI( "/pentaho/content/ws-run/StubService/setString" );
     request.setRequestURL( "http://localhost:8080/pentaho/content/ws-run/StubService/getString" );
@@ -156,6 +166,7 @@ public class AxisServiceExecutorTest {
 
     pathParams.setParameter( "httprequest", request );
     pathParams.setParameter( "httpresponse", response );
+    pathParams.setParameter( "servletconfig", config );
 
     try {
       StubService.setStringCalled = false;
@@ -180,6 +191,9 @@ public class AxisServiceExecutorTest {
 
     MockHttpServletRequest request = new MockHttpServletRequest();
     MockHttpServletResponse response = new MockHttpServletResponse();
+    MockServletConfig config = new MockServletConfig();
+    MockServletContext context = new MockServletContext();
+    config.setServletContext( context );
 
     request.setMethod( "GET" );
     request.setRequestURI( "/pentaho/content/ws-run/StubService/throwsError1" );
@@ -188,6 +202,7 @@ public class AxisServiceExecutorTest {
 
     pathParams.setParameter( "httprequest", request );
     pathParams.setParameter( "httpresponse", response );
+    pathParams.setParameter( "servletconfig", config );
     try {
       StubService.throwsError1Called = false;
       StubTransportSender.transportOutStr = null;
@@ -212,6 +227,9 @@ public class AxisServiceExecutorTest {
 
     MockHttpServletRequest request = new MockHttpServletRequest();
     MockHttpServletResponse response = new MockHttpServletResponse();
+    MockServletConfig config = new MockServletConfig();
+    MockServletContext context = new MockServletContext();
+    config.setServletContext( context );
 
     request.setMethod( "GET" );
     request.setRequestURI( "/pentaho/content/ws-run/StubService/throwsError2" );
@@ -220,6 +238,7 @@ public class AxisServiceExecutorTest {
 
     pathParams.setParameter( "httprequest", request );
     pathParams.setParameter( "httpresponse", response );
+    pathParams.setParameter( "servletconfig", config );
 
     try {
       StubService.throwsError2Called = false;
@@ -246,6 +265,9 @@ public class AxisServiceExecutorTest {
 
     MockHttpServletRequest request = new MockHttpServletRequest();
     MockHttpServletResponse response = new MockHttpServletResponse();
+    MockServletConfig config = new MockServletConfig();
+    MockServletContext context = new MockServletContext();
+    config.setServletContext( context );
 
     request.setMethod( "GET" );
     request.setRequestURI( "/pentaho/content/ws-run/StubService/bogus" );
@@ -254,6 +276,7 @@ public class AxisServiceExecutorTest {
 
     pathParams.setParameter( "httprequest", request );
     pathParams.setParameter( "httpresponse", response );
+    pathParams.setParameter( "servletconfig", config );
 
     try {
       StubTransportSender.transportOutStr = null;
@@ -279,6 +302,9 @@ public class AxisServiceExecutorTest {
 
     MockHttpServletRequest request = new MockHttpServletRequest();
     MockHttpServletResponse response = new MockHttpServletResponse();
+    MockServletConfig config = new MockServletConfig();
+    MockServletContext context = new MockServletContext();
+    config.setServletContext( context );
 
     request.setMethod( "POST" );
     request.setRequestURI( "/pentaho/content/ws-run/StubService" );
@@ -287,12 +313,14 @@ public class AxisServiceExecutorTest {
     request.setContentType( "application/soap+xml; charset=UTF-8; action=\"urn:getString\"" );
     String xml =
       "<?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv=\"http://www.w3"
-        + ".org/2003/05/soap-envelope\"><soapenv:Body><ns2:getString xmlns:ns2=\"http://webservice.pentaho"
-        + ".com\"></ns2:getString></soapenv:Body></soapenv:Envelope>";
+        + ".org/2003/05/soap-envelope\"><soapenv:Body><ns2:getString"
+        + " xmlns:ns2=\"http://webservices.services.plugin.platform.test.pentaho.org"
+        + "\"></ns2:getString></soapenv:Body></soapenv:Envelope>";
     request.setBodyContent( xml );
 
     pathParams.setParameter( "httprequest", request );
     pathParams.setParameter( "httpresponse", response );
+    pathParams.setParameter( "servletconfig", config );
 
     try {
       StubTransportSender.transportOutStr = null;
@@ -304,7 +332,7 @@ public class AxisServiceExecutorTest {
       String content = StubTransportSender.transportOutStr;
       assertEquals( "result are wrong",
         "<?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv=\"http://www.w3"
-          + ".org/2003/05/soap-envelope\"><soapenv:Body><ns:getStringResponse xmlns:ns=\""
+          + ".org/2003/05/soap-envelope\"><soapenv:Header/><soapenv:Body><ns:getStringResponse xmlns:ns=\""
           + "http://webservices.services" + ".plugin.platform.test.pentaho.org\"><return>test "
           + "result</return></ns:getStringResponse></soapenv:Body></soapenv:Envelope>", content );
     } catch ( Exception e ) {
@@ -323,6 +351,9 @@ public class AxisServiceExecutorTest {
 
     MockHttpServletRequest request = new MockHttpServletRequest();
     MockHttpServletResponse response = new MockHttpServletResponse();
+    MockServletConfig config = new MockServletConfig();
+    MockServletContext context = new MockServletContext();
+    config.setServletContext( context );
 
     request.setMethod( "PUT" );
     request.setRequestURI( "/pentaho/content/ws-run/StubService" );
@@ -331,12 +362,14 @@ public class AxisServiceExecutorTest {
     request.setContentType( "application/soap+xml; charset=UTF-8; action=\"urn:getString\"" );
     String xml =
       "<?xml version='1.0' encoding='UTF-8'?><soapenv:Envelope xmlns:soapenv=\"http://www.w3"
-        + ".org/2003/05/soap-envelope\"><soapenv:Body><ns2:getString xmlns:ns2=\"http://webservice.pentaho"
-        + ".com\"></ns2:getString></soapenv:Body></soapenv:Envelope>";
+        + ".org/2003/05/soap-envelope\"><soapenv:Body><ns2:getString "
+        + "xmlns:ns2=\"http://webservices.services.plugin.platform.test.pentaho.org"
+        + "\"></ns2:getString></soapenv:Body></soapenv:Envelope>";
     request.setBodyContent( xml );
 
     pathParams.setParameter( "httprequest", request );
     pathParams.setParameter( "httpresponse", response );
+    pathParams.setParameter( "servletconfig", config );
 
     try {
       StubTransportSender.transportOutStr = null;

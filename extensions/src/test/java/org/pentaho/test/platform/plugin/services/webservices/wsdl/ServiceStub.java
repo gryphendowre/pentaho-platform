@@ -14,7 +14,7 @@
  * See the GNU Lesser General Public License for more details.
  *
  *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
+ * Copyright (c) 2002-2019 Hitachi Vantara. All rights reserved.
  *
  */
 
@@ -746,23 +746,26 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
       org.apache.axiom.om.OMDataSource dataSource =
         new org.apache.axis2.databinding.ADBDataSource( this, parentQName ) {
 
-          public void serialize( org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter )
+          public void serialize( javax.xml.stream.XMLStreamWriter xmlWriter )
             throws javax.xml.stream.XMLStreamException {
-            ComplexType.this.serialize( parentQName, factory, xmlWriter );
+            ComplexType.this.serialize( parentQName, xmlWriter );
           }
         };
-      return new org.apache.axiom.om.impl.llom.OMSourcedElementImpl( parentQName, factory, dataSource );
+      org.apache.axiom.om.impl.llom.OMSourcedElementImpl omSourcedElementImpl =
+        new org.apache.axiom.om.impl.llom.OMSourcedElementImpl();
+      omSourcedElementImpl.init( parentQName, dataSource );
+      return omSourcedElementImpl;
 
     }
 
-    public void serialize( final javax.xml.namespace.QName parentQName, final org.apache.axiom.om.OMFactory factory,
-                           org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter )
+    public void serialize( final javax.xml.namespace.QName parentQName,
+                           javax.xml.stream.XMLStreamWriter xmlWriter )
       throws javax.xml.stream.XMLStreamException, org.apache.axis2.databinding.ADBException {
-      serialize( parentQName, factory, xmlWriter, false );
+      serialize( parentQName, xmlWriter, false );
     }
 
-    public void serialize( final javax.xml.namespace.QName parentQName, final org.apache.axiom.om.OMFactory factory,
-                           org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter,
+    public void serialize( final javax.xml.namespace.QName parentQName,
+                           javax.xml.stream.XMLStreamWriter xmlWriter,
                            boolean serializeType )
       throws javax.xml.stream.XMLStreamException, org.apache.axis2.databinding.ADBException {
 
@@ -1309,23 +1312,24 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
 
       org.apache.axiom.om.OMDataSource dataSource = new org.apache.axis2.databinding.ADBDataSource( this, MY_QNAME ) {
 
-        public void serialize( org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter )
+        public void serialize( javax.xml.stream.XMLStreamWriter xmlWriter )
           throws javax.xml.stream.XMLStreamException {
-          GetDetailsResponse.this.serialize( MY_QNAME, factory, xmlWriter );
+          GetDetailsResponse.this.serialize( MY_QNAME, xmlWriter );
         }
       };
-      return new org.apache.axiom.om.impl.llom.OMSourcedElementImpl( MY_QNAME, factory, dataSource );
+      org.apache.axiom.om.impl.llom.OMSourcedElementImpl omSourcedElementImpl =
+        new org.apache.axiom.om.impl.llom.OMSourcedElementImpl();
+      omSourcedElementImpl.init( MY_QNAME, dataSource );
+      return omSourcedElementImpl;
 
     }
 
-    public void serialize( final javax.xml.namespace.QName parentQName, final org.apache.axiom.om.OMFactory factory,
-                           org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter )
+    public void serialize( final javax.xml.namespace.QName parentQName, javax.xml.stream.XMLStreamWriter xmlWriter )
       throws javax.xml.stream.XMLStreamException, org.apache.axis2.databinding.ADBException {
-      serialize( parentQName, factory, xmlWriter, false );
+      serialize( parentQName, xmlWriter, false );
     }
 
-    public void serialize( final javax.xml.namespace.QName parentQName, final org.apache.axiom.om.OMFactory factory,
-                           org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter,
+    public void serialize( final javax.xml.namespace.QName parentQName, javax.xml.stream.XMLStreamWriter xmlWriter,
                            boolean serializeType )
       throws javax.xml.stream.XMLStreamException, org.apache.axis2.databinding.ADBException {
 
@@ -1390,7 +1394,7 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
           writeAttribute( "xsi", "http://www.w3.org/2001/XMLSchema-instance", "nil", "1", xmlWriter );
           xmlWriter.writeEndElement();
         } else {
-          local_return.serialize( new javax.xml.namespace.QName( "", "return" ), factory, xmlWriter );
+          local_return.serialize( new javax.xml.namespace.QName( "", "return" ), xmlWriter );
         }
       }
       xmlWriter.writeEndElement();
@@ -1737,23 +1741,24 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
 
       org.apache.axiom.om.OMDataSource dataSource = new org.apache.axis2.databinding.ADBDataSource( this, MY_QNAME ) {
 
-        public void serialize( org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter )
+        public void serialize( javax.xml.stream.XMLStreamWriter xmlWriter )
           throws javax.xml.stream.XMLStreamException {
-          GetStringResponse.this.serialize( MY_QNAME, factory, xmlWriter );
+          GetStringResponse.this.serialize( MY_QNAME, xmlWriter );
         }
       };
-      return new org.apache.axiom.om.impl.llom.OMSourcedElementImpl( MY_QNAME, factory, dataSource );
+      org.apache.axiom.om.impl.llom.OMSourcedElementImpl omSourcedElementImpl =
+        new org.apache.axiom.om.impl.llom.OMSourcedElementImpl();
+      omSourcedElementImpl.init( MY_QNAME, dataSource );
+      return omSourcedElementImpl;
 
     }
 
-    public void serialize( final javax.xml.namespace.QName parentQName, final org.apache.axiom.om.OMFactory factory,
-                           org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter )
+    public void serialize( final javax.xml.namespace.QName parentQName, javax.xml.stream.XMLStreamWriter xmlWriter )
       throws javax.xml.stream.XMLStreamException, org.apache.axis2.databinding.ADBException {
-      serialize( parentQName, factory, xmlWriter, false );
+      serialize( parentQName, xmlWriter, false );
     }
 
-    public void serialize( final javax.xml.namespace.QName parentQName, final org.apache.axiom.om.OMFactory factory,
-                           org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter,
+    public void serialize( final javax.xml.namespace.QName parentQName, javax.xml.stream.XMLStreamWriter xmlWriter,
                            boolean serializeType )
       throws javax.xml.stream.XMLStreamException, org.apache.axis2.databinding.ADBException {
 
@@ -2170,23 +2175,24 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
 
       org.apache.axiom.om.OMDataSource dataSource = new org.apache.axis2.databinding.ADBDataSource( this, MY_QNAME ) {
 
-        public void serialize( org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter )
+        public void serialize( javax.xml.stream.XMLStreamWriter xmlWriter )
           throws javax.xml.stream.XMLStreamException {
-          SetString.this.serialize( MY_QNAME, factory, xmlWriter );
+          SetString.this.serialize( MY_QNAME, xmlWriter );
         }
       };
-      return new org.apache.axiom.om.impl.llom.OMSourcedElementImpl( MY_QNAME, factory, dataSource );
+      org.apache.axiom.om.impl.llom.OMSourcedElementImpl omSourcedElementImpl =
+        new org.apache.axiom.om.impl.llom.OMSourcedElementImpl();
+      omSourcedElementImpl.init( MY_QNAME, dataSource );
+      return omSourcedElementImpl;
 
     }
 
-    public void serialize( final javax.xml.namespace.QName parentQName, final org.apache.axiom.om.OMFactory factory,
-                           org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter )
+    public void serialize( final javax.xml.namespace.QName parentQName, javax.xml.stream.XMLStreamWriter xmlWriter )
       throws javax.xml.stream.XMLStreamException, org.apache.axis2.databinding.ADBException {
-      serialize( parentQName, factory, xmlWriter, false );
+      serialize( parentQName, xmlWriter, false );
     }
 
-    public void serialize( final javax.xml.namespace.QName parentQName, final org.apache.axiom.om.OMFactory factory,
-                           org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter,
+    public void serialize( final javax.xml.namespace.QName parentQName, javax.xml.stream.XMLStreamWriter xmlWriter,
                            boolean serializeType )
       throws javax.xml.stream.XMLStreamException, org.apache.axis2.databinding.ADBException {
 
@@ -2602,23 +2608,24 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
 
       org.apache.axiom.om.OMDataSource dataSource = new org.apache.axis2.databinding.ADBDataSource( this, MY_QNAME ) {
 
-        public void serialize( org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter )
+        public void serialize( javax.xml.stream.XMLStreamWriter xmlWriter )
           throws javax.xml.stream.XMLStreamException {
-          ThrowsError2Response.this.serialize( MY_QNAME, factory, xmlWriter );
+          ThrowsError2Response.this.serialize( MY_QNAME, xmlWriter );
         }
       };
-      return new org.apache.axiom.om.impl.llom.OMSourcedElementImpl( MY_QNAME, factory, dataSource );
+      org.apache.axiom.om.impl.llom.OMSourcedElementImpl omSourcedElementImpl =
+        new org.apache.axiom.om.impl.llom.OMSourcedElementImpl();
+      omSourcedElementImpl.init( MY_QNAME, dataSource );
+      return omSourcedElementImpl;
 
     }
 
-    public void serialize( final javax.xml.namespace.QName parentQName, final org.apache.axiom.om.OMFactory factory,
-                           org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter )
+    public void serialize( final javax.xml.namespace.QName parentQName, javax.xml.stream.XMLStreamWriter xmlWriter )
       throws javax.xml.stream.XMLStreamException, org.apache.axis2.databinding.ADBException {
-      serialize( parentQName, factory, xmlWriter, false );
+      serialize( parentQName, xmlWriter, false );
     }
 
-    public void serialize( final javax.xml.namespace.QName parentQName, final org.apache.axiom.om.OMFactory factory,
-                           org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter,
+    public void serialize( final javax.xml.namespace.QName parentQName, javax.xml.stream.XMLStreamWriter xmlWriter,
                            boolean serializeType )
       throws javax.xml.stream.XMLStreamException, org.apache.axis2.databinding.ADBException {
 
@@ -3035,23 +3042,24 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
 
       org.apache.axiom.om.OMDataSource dataSource = new org.apache.axis2.databinding.ADBDataSource( this, MY_QNAME ) {
 
-        public void serialize( org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter )
+        public void serialize( javax.xml.stream.XMLStreamWriter xmlWriter )
           throws javax.xml.stream.XMLStreamException {
-          GetDetails.this.serialize( MY_QNAME, factory, xmlWriter );
+          GetDetails.this.serialize( MY_QNAME, xmlWriter );
         }
       };
-      return new org.apache.axiom.om.impl.llom.OMSourcedElementImpl( MY_QNAME, factory, dataSource );
+      org.apache.axiom.om.impl.llom.OMSourcedElementImpl omSourcedElementImpl =
+        new org.apache.axiom.om.impl.llom.OMSourcedElementImpl();
+      omSourcedElementImpl.init( MY_QNAME, dataSource );
+      return omSourcedElementImpl;
 
     }
 
-    public void serialize( final javax.xml.namespace.QName parentQName, final org.apache.axiom.om.OMFactory factory,
-                           org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter )
+    public void serialize( final javax.xml.namespace.QName parentQName, javax.xml.stream.XMLStreamWriter xmlWriter )
       throws javax.xml.stream.XMLStreamException, org.apache.axis2.databinding.ADBException {
-      serialize( parentQName, factory, xmlWriter, false );
+      serialize( parentQName, xmlWriter, false );
     }
 
-    public void serialize( final javax.xml.namespace.QName parentQName, final org.apache.axiom.om.OMFactory factory,
-                           org.apache.axis2.databinding.utils.writer.MTOMAwareXMLStreamWriter xmlWriter,
+    public void serialize( final javax.xml.namespace.QName parentQName, javax.xml.stream.XMLStreamWriter xmlWriter,
                            boolean serializeType )
       throws javax.xml.stream.XMLStreamException, org.apache.axis2.databinding.ADBException {
 
@@ -3116,7 +3124,7 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
           writeAttribute( "xsi", "http://www.w3.org/2001/XMLSchema-instance", "nil", "1", xmlWriter );
           xmlWriter.writeEndElement();
         } else {
-          localObject.serialize( new javax.xml.namespace.QName( "", "object" ), factory, xmlWriter );
+          localObject.serialize( new javax.xml.namespace.QName( "", "object" ), xmlWriter );
         }
       }
       xmlWriter.writeEndElement();
