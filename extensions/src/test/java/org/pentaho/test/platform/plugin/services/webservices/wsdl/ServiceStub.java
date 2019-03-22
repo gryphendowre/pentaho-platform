@@ -54,7 +54,7 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
   private void populateAxisService() throws org.apache.axis2.AxisFault {
 
     // creating the Service with a unique name
-    _service = new org.apache.axis2.description.AxisService( "StubService" + getUniqueSuffix() );
+    _service = new org.pentaho.platform.plugin.services.webservices.content.PentahoAxisService( "StubService" + getUniqueSuffix() );
     addAnonymousOperations();
 
     // creating the operations
@@ -166,9 +166,7 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
    * @see org.pentaho.test.platform.plugin.services.webservices.StubService#throwsError2
    */
 
-  public org.pentaho.test.platform.plugin.services.webservices.wsdl.ServiceStub.ThrowsError2Response throwsError2(
-
-  )
+  public org.pentaho.test.platform.plugin.services.webservices.wsdl.ServiceStub.ThrowsError2Response throwsError2()
 
     throws java.rmi.RemoteException {
     org.apache.axis2.context.MessageContext _messageContext = null;
@@ -270,9 +268,7 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
    * @see org.pentaho.test.platform.plugin.services.webservices.StubService#getString
    */
 
-  public org.pentaho.test.platform.plugin.services.webservices.wsdl.ServiceStub.GetStringResponse getString(
-
-  )
+  public org.pentaho.test.platform.plugin.services.webservices.wsdl.ServiceStub.GetStringResponse getString()
 
     throws java.rmi.RemoteException {
     org.apache.axis2.context.MessageContext _messageContext = null;
@@ -516,9 +512,7 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
   /**
    * Auto generated method signature
    */
-  public void throwsError1(
-
-  ) throws java.rmi.RemoteException {
+  public void throwsError1() throws java.rmi.RemoteException {
     org.apache.axis2.context.MessageContext _messageContext = null;
 
     org.apache.axis2.client.OperationClient _operationClient =
@@ -1198,9 +1192,8 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
             reader.next();
           }
 
-          if ( reader.isStartElement() )
-          // A start element we are not expecting indicates a trailing invalid property
-          {
+          if ( reader.isStartElement() ) {
+            // A start element we are not expecting indicates a trailing invalid property
             throw new org.apache.axis2.databinding.ADBException( "Unexpected subelement " + reader.getLocalName() );
           }
 
@@ -1643,9 +1636,8 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
             reader.next();
           }
 
-          if ( reader.isStartElement() )
-          // A start element we are not expecting indicates a trailing invalid property
-          {
+          if ( reader.isStartElement() ) {
+            // A start element we are not expecting indicates a trailing invalid property
             throw new org.apache.axis2.databinding.ADBException( "Unexpected subelement " + reader.getLocalName() );
           }
 
@@ -2077,9 +2069,8 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
             reader.next();
           }
 
-          if ( reader.isStartElement() )
-          // A start element we are not expecting indicates a trailing invalid property
-          {
+          if ( reader.isStartElement() ) {
+            // A start element we are not expecting indicates a trailing invalid property
             throw new org.apache.axis2.databinding.ADBException( "Unexpected subelement " + reader.getLocalName() );
           }
 
@@ -2510,9 +2501,8 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
             reader.next();
           }
 
-          if ( reader.isStartElement() )
-          // A start element we are not expecting indicates a trailing invalid property
-          {
+          if ( reader.isStartElement() ) {
+            // A start element we are not expecting indicates a trailing invalid property
             throw new org.apache.axis2.databinding.ADBException( "Unexpected subelement " + reader.getLocalName() );
           }
 
@@ -2944,9 +2934,8 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
             reader.next();
           }
 
-          if ( reader.isStartElement() )
-          // A start element we are not expecting indicates a trailing invalid property
-          {
+          if ( reader.isStartElement() ) {
+            // A start element we are not expecting indicates a trailing invalid property
             throw new org.apache.axis2.databinding.ADBException( "Unexpected subelement " + reader.getLocalName() );
           }
 
@@ -3372,9 +3361,8 @@ public class ServiceStub extends org.apache.axis2.client.Stub {
             reader.next();
           }
 
-          if ( reader.isStartElement() )
-          // A start element we are not expecting indicates a trailing invalid property
-          {
+          if ( reader.isStartElement() ) {
+            // A start element we are not expecting indicates a trailing invalid property
             throw new org.apache.axis2.databinding.ADBException( "Unexpected subelement " + reader.getLocalName() );
           }
 

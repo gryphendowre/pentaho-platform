@@ -43,7 +43,7 @@ public class AxisServiceWsdlGenerator extends AxisWebServiceRequestDispatcher {
    * Writes the WSDL to the output stream provided. The WSDL is prepared ahead of time when the web service is created.
    */
   @Override
-  public void createServiceContent( AxisService axisService, String operationName, AxisConfiguration axisConfiguration,
+  public void createServiceContent( PentahoAxisService axisService, String operationName, AxisConfiguration axisConfiguration,
       ConfigurationContext context, OutputStream out ) throws Exception {
     axisService.printWSDL( out, AxisUtil.getWebServiceExecuteUrl() );
   }

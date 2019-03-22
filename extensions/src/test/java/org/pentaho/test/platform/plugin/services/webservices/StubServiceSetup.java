@@ -20,12 +20,12 @@
 
 package org.pentaho.test.platform.plugin.services.webservices;
 
-import org.apache.axis2.description.AxisService;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.platform.api.engine.IServiceConfig;
 import org.pentaho.platform.plugin.services.pluginmgr.servicemgr.ServiceConfig;
 import org.pentaho.platform.plugin.services.webservices.SystemSolutionAxisConfigurator;
+import org.pentaho.platform.plugin.services.webservices.content.PentahoAxisService;
 import org.pentaho.test.platform.utils.TestResourceLocation;
 
 import java.io.File;
@@ -86,16 +86,14 @@ public class StubServiceSetup extends SystemSolutionAxisConfigurator {
     return wrappers;
   }
 
-  @Override
-  protected void addTransports( AxisService axisService ) {
+  protected void addTransports( PentahoAxisService axisService ) {
 
     ArrayList<String> transports = new ArrayList<String>();
     transports.add( "http" ); //$NON-NLS-1$
     axisService.setExposedTransports( transports );
   }
 
-  @Override
-  protected void addServiceEndPoints( AxisService axisService ) {
+  protected void addServiceEndPoints( PentahoAxisService axisService ) {
     String endPoint1 = BASE_URL + "content/ws-run/" + axisService.getName(); //$NON-NLS-1$
     String endPoint2 = "http:test"; //$NON-NLS-1$
 

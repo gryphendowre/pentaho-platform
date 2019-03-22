@@ -56,7 +56,7 @@ public class AxisServiceExecutor extends AxisWebServiceRequestDispatcher impleme
   private static final long serialVersionUID = -8815968682881342687L;
 
   @Override
-  public void createServiceContent( AxisService axisService, String operationName, AxisConfiguration axisConfiguration,
+  public void createServiceContent( PentahoAxisService axisService, String operationName, AxisConfiguration axisConfiguration,
       ConfigurationContext context, OutputStream out ) throws Exception {
 
     IParameterProvider pathParams = parameterProviders.get( "path" ); //$NON-NLS-1$

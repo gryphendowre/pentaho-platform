@@ -21,7 +21,6 @@
 package org.pentaho.platform.plugin.services.webservices.content;
 
 import org.apache.axis2.context.ConfigurationContext;
-import org.apache.axis2.description.AxisService;
 import org.apache.axis2.engine.AxisConfiguration;
 import org.pentaho.platform.api.engine.IParameterProvider;
 import org.pentaho.platform.plugin.services.webservices.messages.Messages;
@@ -87,7 +86,7 @@ public abstract class AxisWebServiceRequestDispatcher extends AbstractAxisServic
     }
 
     // try to get the service using the name
-    AxisService axisService = axisConfiguration.getService( serviceName );
+    PentahoAxisService axisService = (PentahoAxisService) axisConfiguration.getService( serviceName );
     if ( axisService == null ) {
       // return an error
       String message =
@@ -118,7 +117,7 @@ public abstract class AxisWebServiceRequestDispatcher extends AbstractAxisServic
    *          The output stream for content to be written to
    * @throws Exception
    */
-  protected abstract void createServiceContent( AxisService axisService, String operationName,
+  protected abstract void createServiceContent( PentahoAxisService axisService, String operationName,
       AxisConfiguration axisConfiguration, ConfigurationContext context, OutputStream out ) throws Exception;
 
 }

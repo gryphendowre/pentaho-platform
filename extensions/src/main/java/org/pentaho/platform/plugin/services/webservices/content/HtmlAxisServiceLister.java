@@ -22,7 +22,6 @@ package org.pentaho.platform.plugin.services.webservices.content;
 
 import org.apache.axis2.context.ConfigurationContext;
 import org.apache.axis2.description.AxisOperation;
-import org.apache.axis2.description.AxisService;
 import org.apache.axis2.engine.AxisConfiguration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -61,7 +60,7 @@ public class HtmlAxisServiceLister extends AbstractAxisServiceContentGenerator {
     Collection servicecol = serviceMap.values();
     // list each web service
     for ( Iterator iterator = servicecol.iterator(); iterator.hasNext(); ) {
-      AxisService axisService = (AxisService) iterator.next();
+      PentahoAxisService axisService = (PentahoAxisService) iterator.next();
 
       getTitleSection( axisService, axisConfiguration, sb );
 
@@ -109,7 +108,7 @@ public class HtmlAxisServiceLister extends AbstractAxisServiceContentGenerator {
    * @param sb
    *          StringBuilder to write content to
    */
-  protected void getTitleSection( AxisService axisService, AxisConfiguration axisConfiguration, StringBuilder sb ) {
+  protected void getTitleSection( PentahoAxisService axisService, AxisConfiguration axisConfiguration, StringBuilder sb ) {
 
     // get the wrapper for the web service so we can get the localized title and description
     IServiceConfig wsDef =
@@ -148,7 +147,7 @@ public class HtmlAxisServiceLister extends AbstractAxisServiceContentGenerator {
    * @param sb
    *          StringBuilder to write content to
    */
-  protected void getWsdlSection( AxisService axisService, StringBuilder sb ) {
+  protected void getWsdlSection( PentahoAxisService axisService, StringBuilder sb ) {
     // write out the WSDL URL
     String wsdlUrl = AxisUtil.getWebServiceWsdlUrl();
     sb.append( "<tr><td>" ).append( Messages.getInstance().getString( "WebServicePlugin.USER_SERVICE_WSDL" ) ) //$NON-NLS-1$ //$NON-NLS-2$
@@ -165,7 +164,7 @@ public class HtmlAxisServiceLister extends AbstractAxisServiceContentGenerator {
    * @param sb
    *          StringBuilder to write content to
    */
-  protected void getRunSection( AxisService axisService, StringBuilder sb ) {
+  protected void getRunSection( PentahoAxisService axisService, StringBuilder sb ) {
     // write out the execution URL
     String serviceUrl = AxisUtil.getWebServiceExecuteUrl();
     sb.append( "<tr><td>" ).append( Messages.getInstance().getString( "WebServicePlugin.USER_SERVICE_URL" ) ) //$NON-NLS-1$ //$NON-NLS-2$
@@ -184,7 +183,7 @@ public class HtmlAxisServiceLister extends AbstractAxisServiceContentGenerator {
    *          StringBuilder to write content to
    */
   @SuppressWarnings( "unchecked" )
-  protected void getOperationsSection( AxisService axisService, StringBuilder sb ) {
+  protected void getOperationsSection( PentahoAxisService axisService, StringBuilder sb ) {
     String serviceUrl = AxisUtil.getWebServiceExecuteUrl();
 
     // write out the operations

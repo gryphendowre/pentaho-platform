@@ -22,7 +22,6 @@ package org.pentaho.platform.plugin.services.webservices;
 
 import org.apache.axis2.AxisFault;
 import org.apache.axis2.deployment.AxisConfigBuilder;
-import org.apache.axis2.description.AxisService;
 import org.apache.axis2.description.Parameter;
 import org.apache.axis2.engine.AxisConfiguration;
 import org.apache.axis2.engine.AxisConfigurator;
@@ -31,6 +30,7 @@ import org.pentaho.platform.api.engine.IPentahoSession;
 import org.pentaho.platform.api.engine.IServiceConfig;
 import org.pentaho.platform.engine.core.system.PentahoBase;
 import org.pentaho.platform.plugin.services.messages.Messages;
+import org.pentaho.platform.plugin.services.webservices.content.PentahoAxisService;
 import org.pentaho.platform.util.logging.Logger;
 
 import java.io.InputStream;
@@ -133,7 +133,7 @@ public abstract class AbstractAxisConfigurator extends PentahoBase implements Ax
    * @param axisService
    *          The Axis web service to add end points to
    */
-  protected abstract void addServiceEndPoints( AxisService axisService );
+  protected abstract void addServiceEndPoints( PentahoAxisService axisService );
 
   /**
    * Adds any implementation-specific transports for a Axis service
@@ -141,7 +141,7 @@ public abstract class AbstractAxisConfigurator extends PentahoBase implements Ax
    * @param axisService
    *          The Axis web service to add end points to
    */
-  protected abstract void addTransports( AxisService axisService );
+  protected abstract void addTransports( PentahoAxisService axisService );
 
   /**
    * Returns a list of the web service wrappers for this implmentation
@@ -187,7 +187,7 @@ public abstract class AbstractAxisConfigurator extends PentahoBase implements Ax
 
     // first create the service
     String serviceId = wsDef.getId();
-    AxisService axisService = AxisUtil.createService( wsDef, getAxisConfiguration() );
+    PentahoAxisService axisService = AxisUtil.createService( wsDef, getAxisConfiguration() );
 
     // add any additional transports
     addTransports( axisService );

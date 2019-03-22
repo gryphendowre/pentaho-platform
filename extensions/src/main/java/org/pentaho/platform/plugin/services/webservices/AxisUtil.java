@@ -22,7 +22,6 @@ package org.pentaho.platform.plugin.services.webservices;
 
 import com.ibm.wsdl.factory.WSDLFactoryImpl;
 import org.apache.axis2.AxisFault;
-import org.apache.axis2.description.AxisService;
 import org.apache.axis2.description.Parameter;
 import org.apache.axis2.description.WSDL2Constants;
 import org.apache.axis2.engine.AxisConfiguration;
@@ -32,6 +31,7 @@ import org.apache.axis2.wsdl.WSDLConstants;
 import org.apache.ws.java2wsdl.Java2WSDLBuilder;
 import org.pentaho.platform.api.engine.IServiceConfig;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
+import org.pentaho.platform.plugin.services.webservices.content.PentahoAxisService;
 import org.xml.sax.InputSource;
 
 import javax.wsdl.Definition;
@@ -101,7 +101,7 @@ public class AxisUtil {
    * @return
    * @throws AxisFault
    */
-  public static AxisService createService( IServiceConfig ws, AxisConfiguration axisConfig ) throws AxisFault {
+  public static PentahoAxisService createService( IServiceConfig ws, AxisConfiguration axisConfig ) throws AxisFault {
     Class<?> serviceClass = ws.getServiceClass();
     String serviceName = ws.getId();
 
@@ -109,7 +109,8 @@ public class AxisUtil {
       axisConfig.removeService( serviceName );
     }
 
-    AxisService axisService = createService( serviceClass.getName(), axisConfig, serviceClass.getClassLoader() );
+    PentahoAxisService axisService = createService( serviceClass.getName(), axisConfig,
+      serviceClass.getClassLoader() );
 
     axisService.setName( serviceName );
     axisService.setDocumentation( ws.getDescription() );
@@ -118,7 +119,7 @@ public class AxisUtil {
   }
 
   @SuppressWarnings( "unchecked" )
-  private static AxisService createService( String implClass, AxisConfiguration axisConfig, ClassLoader loader )
+  private static PentahoAxisService createService( String implClass, AxisConfiguration axisConfig, ClassLoader loader )
     throws AxisFault {
 
     try {
@@ -131,7 +132,7 @@ public class AxisUtil {
       messageReciverMap.put( WSDL2Constants.MEP_URI_IN_OUT, inOutmessageReceiver );
       messageReciverMap.put( WSDL2Constants.MEP_URI_ROBUST_IN_ONLY, inOutmessageReceiver );
 
-      return AxisService.createService( implClass, axisConfig, messageReciverMap, null, null, loader );
+      return PentahoAxisService.createService( implClass, axisConfig, messageReciverMap, null, null, loader );
     } catch ( Exception e ) {
       throw AxisFault.makeFault( e );
     }
@@ -144,7 +145,7 @@ public class AxisUtil {
    * @param wrapper
    * @throws Exception
    */
-  public static void createServiceWsdl( AxisService axisService, IServiceConfig wsDef, AxisConfiguration axisConfig )
+  public static void createServiceWsdl( PentahoAxisService axisService, IServiceConfig wsDef, AxisConfiguration axisConfig )
     throws Exception {
     // specific that we are generating the WSDL
     Parameter useOriginalwsdl = new Parameter();
@@ -162,7 +163,7 @@ public class AxisUtil {
     axisService.addParameter( wsdl );
   }
 
-  public static IServiceConfig getSourceDefinition( AxisService axisService,
+  public static IServiceConfig getSourceDefinition( PentahoAxisService axisService,
       SystemSolutionAxisConfigurator axisConfigurator ) {
     return axisConfigurator.getWebServiceDefinition( axisService.getName() );
   }

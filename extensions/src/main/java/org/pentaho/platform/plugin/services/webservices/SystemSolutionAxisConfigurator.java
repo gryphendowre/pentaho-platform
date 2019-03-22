@@ -30,6 +30,7 @@ import org.pentaho.platform.api.engine.IServiceConfig;
 import org.pentaho.platform.engine.core.system.PentahoRequestContextHolder;
 import org.pentaho.platform.engine.services.actionsequence.ActionSequenceResource;
 import org.pentaho.platform.plugin.services.messages.Messages;
+import org.pentaho.platform.plugin.services.webservices.content.PentahoAxisService;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -101,12 +102,12 @@ public class SystemSolutionAxisConfigurator extends AbstractAxisConfigurator {
   }
 
   @Override
-  protected void addTransports( AxisService axisService ) {
+  protected void addTransports( PentahoAxisService axisService ) {
     // the defaults include http so we are good to go
   }
 
   @Override
-  protected void addServiceEndPoints( AxisService axisService ) {
+  protected void addServiceEndPoints( PentahoAxisService axisService ) {
     IPentahoRequestContext requestContext = PentahoRequestContextHolder.getRequestContext();
     String endPoint1 = requestContext.getContextPath() + "content/ws-run/" + axisService.getName(); //$NON-NLS-1$
     axisService.setEPRs( new String[] { endPoint1 } );

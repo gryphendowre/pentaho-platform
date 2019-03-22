@@ -25,9 +25,9 @@ import org.apache.axis2.context.MessageContext;
 import org.apache.axis2.context.OperationContext;
 import org.apache.axis2.context.ServiceContext;
 import org.apache.axis2.description.AxisOperation;
-import org.apache.axis2.description.AxisService;
 import org.apache.axis2.engine.AxisConfiguration;
 import org.apache.axis2.transport.http.AxisServlet;
+import org.pentaho.platform.plugin.services.webservices.content.PentahoAxisService;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -46,7 +46,7 @@ public class AxisServletHooks extends AxisServlet {
 
   private static final long serialVersionUID = 3169157817280586159L;
 
-  protected AxisService axisService;
+  protected PentahoAxisService axisService;
 
   protected AxisOperation axisOperation;
 
@@ -198,7 +198,7 @@ public class AxisServletHooks extends AxisServlet {
    * 
    * @param axisService
    */
-  public void setAxisService( AxisService axisService ) {
+  public void setAxisService( PentahoAxisService axisService ) {
     this.axisService = axisService;
   }
 
