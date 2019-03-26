@@ -945,13 +945,18 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
     if ( isArray ) {
       elt1.setMaxOccurs( Long.MAX_VALUE );
     }
-    elt1.setMinOccurs( 0 );
+
+    // Adding in code change between v.1.6.2 and 1.6.3, they used two different if statements that were the same
+    // to set these values, so this was written to consolidate the duplicate code.
     if ( !( "int".equals( schemaTypeName.getLocalPart() )
       || "double".equals( schemaTypeName.getLocalPart() )
       || "long".equals( schemaTypeName.getLocalPart() )
       || "boolean".equals( schemaTypeName.getLocalPart() )
       || "short".equals( schemaTypeName.getLocalPart() )
+      || "byte".equals( schemaTypeName.getLocalPart() )
+      || "unsignedShort".equals( schemaTypeName.getLocalPart() )
       || "float".equals( schemaTypeName.getLocalPart() ) ) ) {
+      elt1.setMinOccurs( 0 );
       elt1.setNillable( true );
     }
   }
