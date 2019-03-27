@@ -2108,7 +2108,7 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.apache.ws.commons.neethi</groupId>
+      <groupId>org.apache.neethi</groupId>
       <artifactId>neethi</artifactId>
       <scope>runtime</scope>
     </dependency>
