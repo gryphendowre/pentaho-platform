@@ -1,6 +1,9 @@
 package org.pentaho.platform.plugin.services.webservices.content;
 
 import org.apache.axis2.AxisFault;
+import org.apache.axis2.Constants;
+import org.apache.axis2.deployment.util.BeanExcludeInfo;
+import org.apache.axis2.deployment.util.Utils;
 import org.apache.axis2.description.AxisMessage;
 import org.apache.axis2.description.AxisOperation;
 import org.apache.axis2.description.AxisService;
@@ -12,6 +15,9 @@ import org.apache.axis2.description.java2wsdl.Java2WSDLUtils;
 import org.apache.axis2.description.java2wsdl.NamespaceGenerator;
 import org.apache.axis2.description.java2wsdl.SchemaGenerator;
 import org.apache.axis2.description.java2wsdl.TypeTable;
+import org.apache.axis2.description.java2wsdl.bytecode.MethodTable;
+import org.apache.axis2.jaxrs.JAXRSModel;
+import org.apache.axis2.jaxrs.JAXRSUtils;
 import org.apache.axis2.util.JavaUtils;
 import org.apache.axis2.deployment.util.BeanExcludeInfo;
 import org.apache.axis2.deployment.util.Utils;
@@ -22,17 +28,23 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import org.apache.ws.commons.schema.XmlSchema;
+import org.apache.ws.commons.schema.XmlSchemaAny;
 import org.apache.ws.commons.schema.XmlSchemaCollection;
 import org.apache.ws.commons.schema.XmlSchemaComplexContent;
 import org.apache.ws.commons.schema.XmlSchemaComplexContentExtension;
 import org.apache.ws.commons.schema.XmlSchemaComplexType;
 import org.apache.ws.commons.schema.XmlSchemaElement;
+import org.apache.ws.commons.schema.XmlSchemaEnumerationFacet;
 import org.apache.ws.commons.schema.XmlSchemaForm;
 import org.apache.ws.commons.schema.XmlSchemaImport;
 import org.apache.ws.commons.schema.XmlSchemaObject;
 import org.apache.ws.commons.schema.XmlSchemaSequence;
+import org.apache.ws.commons.schema.XmlSchemaSimpleType;
+import org.apache.ws.commons.schema.XmlSchemaSimpleTypeRestriction;
+import org.apache.ws.commons.schema.XmlSchemaType;
 import org.apache.ws.commons.schema.utils.NamespaceMap;
 import org.apache.ws.commons.schema.utils.NamespacePrefixList;
+import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.w3c.dom.Document;
 
 import javax.activation.DataHandler;
@@ -42,22 +54,24 @@ import javax.jws.WebResult;
 import javax.jws.WebService;
 import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilderFactory;
-
+import java.beans.BeanInfo;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-
-import java.beans.PropertyDescriptor;
-import java.beans.BeanInfo;
-import java.beans.Introspector;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -70,8 +84,9 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
   private static final Log log = LogFactory.getLog( DefaultSchemaGenerator.class );
   public static final String NAME_SPACE_PREFIX = "ax2"; // axis2 name space
   private static int prefixCount = 1;
-  protected Map targetNamespacePrefixMap = new Hashtable();
-  protected Map schemaMap = new Hashtable();
+  private JAXRSModel classModel;
+  protected Map<String, String> targetNamespacePrefixMap = new Hashtable<String, String>();
+  protected Map<String, XmlSchema> schemaMap = new Hashtable<String, XmlSchema>();
   protected XmlSchemaCollection xmlSchemaCollection = new XmlSchemaCollection();
   protected ClassLoader classLoader;
   protected String className;
@@ -87,12 +102,12 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
   protected List<String> excludeMethods = new ArrayList<>();
   protected List<String> extraClasses = null;
   protected boolean useWSDLTypesNamespace = false;
-  protected Map pkg2nsmap = null;
+  protected Map<String, String> pkg2nsmap = null;
   protected NamespaceGenerator nsGen = null;
   protected String targetNamespace = null;
   //to keep the list of operation which uses MR other than RPC MR
   protected List<String> nonRpcMethods = new ArrayList<>();
-  protected Class serviceClass = null;
+  protected Class<?> serviceClass = null;
   protected AxisService service;
   // location of the custom schema , if any
   protected String customSchemaLocation;
@@ -153,6 +168,19 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
       Parameter generateWrappedArrayTypes = service.getParameter( "generateWrappedArrayTypes" );
       if ( ( generateWrappedArrayTypes != null ) && JavaUtils.isTrue( generateWrappedArrayTypes.getValue() ) ) {
         isGenerateWrappedArrayTypes = true;
+      }
+      Parameter extraClassesParam = service.getParameter( "exctraClass" );
+      if ( extraClassesParam != null ) {
+        String extraClassesString = (String) extraClassesParam.getValue();
+
+        String[] extraClassesArray = extraClassesString.split( "," );
+        if ( this.extraClasses == null ) {
+          this.extraClasses = new ArrayList<String>();
+        }
+
+        for ( String extraClass : extraClassesArray ) {
+          this.extraClasses.add( extraClass.trim() );
+        }
       }
     }
   }
@@ -215,49 +243,60 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
    * @return Returns XmlSchema.
    * @throws Exception
    */
-  public Collection generateSchema() throws Exception {
+  public Collection<XmlSchema> generateSchema() throws Exception {
     loadCustomSchemaFile();
     loadMappingFile();
     //all most all the time the ittr will have only one class in it
     /**
      * Schema genertaion done in two stage 1. Load all the methods and
-     * create type for methods parameters ( if the parameters are Bean
+     * create type for methods parameters (if the parameters are Bean
      * then it will create Complex types foer those , and if the
      * parameters are simple type which decribe in SimpleTypeTable
-     * nothing will happen ) 2. In the next stage for all the methods
+     * nothing will happen) 2. In the next stage for all the methods
      * messages and port types will be creteated
      */
-    WebService webervice = (WebService) serviceClass.getAnnotation( WebService.class );
-    if ( webervice != null ) {
-      String tns = webervice.targetNamespace();
-      if ( tns != null && !"".equals( tns ) ) {
-        targetNamespace = tns;
-        schemaTargetNameSpace = tns;
+    classModel = JAXRSUtils.getClassModel( serviceClass );
+    List<Method> serviceMethods = new ArrayList<Method>();
+    for ( Method method : serviceClass.getMethods() ) {
+      if ( method.getDeclaringClass() != Object.class ) {
+        serviceMethods.add( method );
       }
-      service.setName( getAnnotatedServiceName( serviceClass, webervice ) );
     }
-    methods = processMethods( serviceClass.getDeclaredMethods() );
+    // The order of the methods returned by getMethods is undefined, but the test cases assume that the
+    // order is the same on all Java versions. Java 6 seems to use reverse lexical order, so we use that
+    // here to make things deterministic.
+    Collections.sort( serviceMethods, new Comparator<Method>() {
+      public int compare( Method o1, Method o2 ) {
+        return -o1.getName().compareTo( o2.getName() );
+      }
+    } );
+    methods = processMethods( serviceMethods.toArray( new Method[serviceMethods.size()] ) );
+
+    for ( String extraClassName : getExtraClasses() ) {
+      Class<?> extraClass = Class.forName( extraClassName, true, classLoader );
+      if ( typeTable.getSimpleSchemaTypeName( extraClassName ) == null ) {
+        generateSchema( extraClass );
+      }
+    }
+
     return schemaMap.values();
   }
 
   protected Method[] processMethods( Method[] declaredMethods ) throws Exception {
-    ArrayList list = new ArrayList();
+    ArrayList<Method> list = new ArrayList<Method>();
     //short the elements in the array
     Arrays.sort( declaredMethods, new MathodComparator() );
 
     // since we do not support overload
-    HashMap uniqueMethods = new LinkedHashMap();
+    Map<String, Method> uniqueMethods = new LinkedHashMap<String, Method>();
     XmlSchemaComplexType methodSchemaType;
     XmlSchemaSequence sequence = null;
 
-    for ( int i = 0; i < declaredMethods.length; i++ ) {
-      Method jMethod = declaredMethods[i];
-      WebMethod methodAnnon = jMethod.getAnnotation( WebMethod.class );
-      if ( methodAnnon != null ) {
-        if ( methodAnnon.exclude() ) {
-          continue;
-        }
+    for ( Method jMethod : declaredMethods ) {
+      if ( jMethod.isBridge() || jMethod.getDeclaringClass().getName().equals( Object.class.getName() ) ) {
+        continue;
       }
+
       String methodName = jMethod.getName();
       // no need to think abt this method , since that is system
       // config method
@@ -287,12 +326,16 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
         //                }
         addToService = true;
       }
+      // by now axis operation should be assigned but we better recheck & add the paramether
+      if ( axisOperation != null ) {
+        axisOperation.addParameter( "JAXRSAnnotaion", JAXRSUtils.getMethodModel( this.classModel, jMethod ) );
+      }
       // Maintain a list of methods we actually work with
       list.add( jMethod );
 
       processException( jMethod, axisOperation );
       uniqueMethods.put( methodName, jMethod );
-      Class[] parameters = jMethod.getParameterTypes();
+      Class<?>[] parameters = jMethod.getParameterTypes();
       String[] parameterNames = null;
       AxisMessage inMessage = axisOperation.getMessage( WSDLConstants.MESSAGE_LABEL_IN_VALUE );
       if ( inMessage != null ) {
@@ -300,13 +343,30 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
       }
       if ( parameters.length > 0 ) {
         parameterNames = methodTable.getParameterNames( methodName );
-        sequence = new XmlSchemaSequence();
-
-        methodSchemaType = createSchemaTypeForMethodPart( methodName );
-        methodSchemaType.setParticle( sequence );
-        inMessage.setElementQName( typeTable.getQNamefortheType( methodName ) );
-        service.addMessageElementQNameToOperationMapping( methodSchemaType.getQName(), axisOperation );
+        // put the parameter names to use it for parsing
+        service.addParameter( methodName, parameterNames );
       }
+
+      // we need to add the method opration wrapper part even to
+      // empty parameter operations
+      sequence = new XmlSchemaSequence();
+
+      String requestElementSuffix = getRequestElementSuffix();
+      String requestLocalPart = methodName;
+      if ( requestElementSuffix != null ) {
+        requestLocalPart += requestElementSuffix;
+      }
+      methodSchemaType = createSchemaTypeForMethodPart( requestLocalPart );
+      methodSchemaType.setParticle( sequence );
+      inMessage.setElementQName( typeTable.getQNamefortheType( requestLocalPart ) );
+
+      Parameter param = service.getParameter( Java2WSDLConstants.MESSAGE_PART_NAME_OPTION_LONG );
+      if ( param != null ) {
+        inMessage.setPartName( (String) param.getValue() );
+      }
+
+      service.addMessageElementQNameToOperationMapping( methodSchemaType.getQName(), axisOperation );
+
       Annotation[][] parameterAnnotation = jMethod.getParameterAnnotations();
       for ( int j = 0; j < parameters.length; j++ ) {
         Class methodParameter = parameters[j];
@@ -319,20 +379,14 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
         }
       }
       // for its return type
-      Class returnType = jMethod.getReturnType();
+      Class<?> returnType = jMethod.getReturnType();
       if ( !"void".equals( jMethod.getReturnType().getName() ) ) {
         String partQname = methodName + RESPONSE;
         methodSchemaType = createSchemaTypeForMethodPart( partQname );
         sequence = new XmlSchemaSequence();
         methodSchemaType.setParticle( sequence );
-        WebResult returnAnnon = jMethod.getAnnotation( WebResult.class );
         String returnName = "return";
-        if ( returnAnnon != null ) {
-          returnName = returnAnnon.name();
-          if ( returnName != null && !"".equals( returnName ) ) {
-            returnName = "return";
-          }
-        }
+        Type genericParameterType = jMethod.getGenericReturnType();
         if ( nonRpcMethods.contains( jMethod.getName() ) ) {
           generateSchemaForType( sequence, null, returnName );
         } else {
@@ -341,13 +395,17 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
         AxisMessage outMessage = axisOperation.getMessage( WSDLConstants.MESSAGE_LABEL_OUT_VALUE );
         outMessage.setElementQName( typeTable.getQNamefortheType( partQname ) );
         outMessage.setName( partQname );
+        Parameter outparam = service.getParameter( Java2WSDLConstants.MESSAGE_PART_NAME_OPTION_LONG );
+        if ( outparam != null ) {
+          outMessage.setPartName( (String) outparam.getValue() );
+        }
         service.addMessageElementQNameToOperationMapping( methodSchemaType.getQName(), axisOperation );
       }
       if ( addToService ) {
         service.addOperation( axisOperation );
       }
     }
-    return (Method[]) list.toArray( new Method[list.size()] );
+    return list.toArray( new Method[list.size()] );
   }
 
   /**
@@ -359,39 +417,19 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
     XmlSchemaComplexType methodSchemaType;
     XmlSchemaSequence sequence;
     if ( jMethod.getExceptionTypes().length > 0 ) {
-      if ( !generateBaseException ) {
-        if ( typeTable.getComplexSchemaType( Exception.class.getName() ) == null ) {
-          sequence = new XmlSchemaSequence();
-          XmlSchema xmlSchema = getXmlSchema( schemaTargetNameSpace );
-          QName elementName = new QName( schemaTargetNameSpace,
-            "Exception",
-            schema_namespace_prefix );
-          XmlSchemaComplexType complexType = new XmlSchemaComplexType( xmlSchema, false );
-          complexType.setName( "Exception" );
-          xmlSchema.getItems().add( complexType );
-          xmlSchema.getSchemaTypes().put( elementName, complexType );
-          typeTable.addComplexSchema( Exception.class.getName(), elementName );
-          QName schemaTypeName = TypeTable.ANY_TYPE;
-          addContentToMethodSchemaType( sequence,
-            schemaTypeName,
-            "Exception",
-            false );
-          complexType.setParticle( sequence );
-        }
-        generateBaseException = true;
-      }
-      Class[] extypes = jMethod.getExceptionTypes();
-      for ( int j = 0; j < extypes.length; j++ ) {
-        Class extype = extypes[j];
+      for ( Class<?> extype : jMethod.getExceptionTypes() ) {
         if ( AxisFault.class.getName().equals( extype.getName() ) ) {
           continue;
         }
-        String partQname = extype.getSimpleName();
+        String partQname = this.service.getName() + getSimpleClassName( extype );
         methodSchemaType = createSchemaTypeForFault( partQname );
         QName elementName =
           new QName( this.schemaTargetNameSpace, partQname, this.schema_namespace_prefix );
         sequence = new XmlSchemaSequence();
         if ( Exception.class.getName().equals( extype.getName() ) ) {
+          if ( typeTable.getComplexSchemaType( Exception.class.getName() ) == null ) {
+            generateComplexTypeforException();
+          }
           QName schemaTypeName = typeTable.getComplexSchemaType( Exception.class.getName() );
           addContentToMethodSchemaType( sequence,
             schemaTypeName,
@@ -403,7 +441,7 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
           resolveSchemaNamespace( Exception.class.getPackage().getName() );
           addImport( getXmlSchema( schemaTargetNameSpace ), schemaTypeName );
         } else {
-          generateSchemaForType( sequence, extype, extype.getSimpleName() );
+          generateSchemaForType( sequence, extype, getSimpleClassName( extype ) );
           methodSchemaType.setParticle( sequence );
         }
 
@@ -413,30 +451,57 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
           continue;
         }
         AxisMessage faultMessage = new AxisMessage();
-        faultMessage.setName( extype.getSimpleName() );
+        faultMessage.setName( this.service.getName() + getSimpleClassName( extype ) );
         faultMessage.setElementQName( typeTable.getQNamefortheType( partQname ) );
+
+        Parameter param = service.getParameter( Java2WSDLConstants.MESSAGE_PART_NAME_OPTION_LONG );
+        if ( param != null ) {
+          faultMessage.setPartName( (String) param.getValue() );
+        }
+
         axisOperation.setFaultMessages( faultMessage );
       }
     }
+  }
+  private void generateComplexTypeforException() {
+    XmlSchemaSequence sequence = new XmlSchemaSequence();
+    XmlSchema xmlSchema = getXmlSchema( schemaTargetNameSpace );
+    QName elementName = new QName( schemaTargetNameSpace, "Exception", schema_namespace_prefix );
+    XmlSchemaComplexType complexType = new XmlSchemaComplexType( xmlSchema, false );
+    complexType.setName( "Exception" );
+    xmlSchema.getItems().add( complexType );
+    xmlSchema.getSchemaTypes().put( elementName, complexType );
+    typeTable.addComplexSchema( Exception.class.getName(), elementName );
+    QName schemaTypeName = new QName( Java2WSDLConstants.URI_2001_SCHEMA_XSD, "string" );
+    addContentToMethodSchemaType( sequence, schemaTypeName, "Message", false );
+    complexType.setParticle( sequence );
   }
 
   /**
    * Generate schema construct for given type
    *
-   * @param javaType : Class to whcih need to generate Schema
+   * @param javaClassType : Class to whcih need to generate Schema
    * @return : Generated QName
    */
-  protected QName generateSchema( Class javaType ) throws Exception {
+  protected QName generateSchema( Class javaClassType ) throws Exception {
+    Class javaType = javaClassType;
+    if ( javaClassType.isInterface() ) {
+      Object pentahoObj = PentahoSystem.get( javaClassType, null );
+      if ( pentahoObj != null ) {
+        javaType = pentahoObj.getClass();
+      }
+    }
+
     String name = getClassName( javaType );
     QName schemaTypeName = typeTable.getComplexSchemaType( name );
     if ( schemaTypeName == null ) {
-      String simpleName = javaType.getSimpleName();
+      String simpleName = getSimpleClassName( javaType );
 
       String packageName = getQualifiedName( javaType.getPackage() );
       String targetNameSpace = resolveSchemaNamespace( packageName );
 
       XmlSchema xmlSchema = getXmlSchema( targetNameSpace );
-      String targetNamespacePrefix = (String) targetNamespacePrefixMap.get( targetNameSpace );
+      String targetNamespacePrefix = targetNamespacePrefixMap.get( targetNameSpace );
       if ( targetNamespacePrefix == null ) {
         targetNamespacePrefix = generatePrefix();
         targetNamespacePrefixMap.put( targetNameSpace, targetNamespacePrefix );
@@ -444,19 +509,18 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
 
       XmlSchemaComplexType complexType = new XmlSchemaComplexType( xmlSchema, false );
       XmlSchemaSequence sequence = new XmlSchemaSequence();
-      XmlSchemaComplexContentExtension complexExtension =
-        new XmlSchemaComplexContentExtension();
+      XmlSchemaComplexContentExtension complexExtension = new XmlSchemaComplexContentExtension();
 
-      XmlSchemaElement eltOuter = new XmlSchemaElement( xmlSchema, false );
       schemaTypeName = new QName( targetNameSpace, simpleName, targetNamespacePrefix );
-      eltOuter.setName( simpleName );
 
-      Class sup = javaType.getSuperclass();
-      if ( ( sup != null ) && !( "java.lang.Object".compareTo( sup.getName() ) == 0 )
-        && !( getQualifiedName( sup.getPackage() ).indexOf( "org.apache.axis2" ) > 0 )
-        && !( getQualifiedName( sup.getPackage() ).indexOf( "java.util" ) > 0 ) ) {
+      Class<?> sup = javaType.getSuperclass();
+      if ( ( sup != null )
+        && ( !"java.lang.Object".equals( sup.getName() ) )
+        && ( !"java.lang.Exception".equals( sup.getName() ) )
+        && !getQualifiedName( sup.getPackage() ).startsWith( "org.apache.axis2" )
+        && !getQualifiedName( sup.getPackage() ).startsWith( "java.util" ) ) {
         String superClassName = sup.getName();
-        String superclassname = sup.getSimpleName();
+        String superclassname = getSimpleClassName( sup );
         String tgtNamespace;
         String tgtNamespacepfx;
         QName qName = typeTable.getSimpleSchemaTypeName( superClassName );
@@ -465,7 +529,7 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
           tgtNamespacepfx = qName.getPrefix();
         } else {
           tgtNamespace = resolveSchemaNamespace( getQualifiedName( sup.getPackage() ) );
-          tgtNamespacepfx = (String) targetNamespacePrefixMap.get( tgtNamespace );
+          tgtNamespacepfx = targetNamespacePrefixMap.get( tgtNamespace );
           QName superClassQname = generateSchema( sup );
           if ( superClassQname != null ) {
             tgtNamespacepfx = superClassQname.getPrefix();
@@ -498,18 +562,19 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
       }
 
       complexType.setName( simpleName );
-
-      //            xmlSchema.getItems().add( eltOuter );
-      xmlSchema.getElements().put( schemaTypeName, eltOuter );
-      eltOuter.setSchemaTypeName( complexType.getQName() );
+      if ( Modifier.isAbstract( javaType.getModifiers() ) ) {
+        complexType.setAbstract( true );
+      }
 
       xmlSchema.getItems().add( complexType );
       xmlSchema.getSchemaTypes().put( schemaTypeName, complexType );
 
       // adding this type to the table
-      typeTable.addComplexSchema( name, eltOuter.getQName() );
+      typeTable.addComplexSchema( name, schemaTypeName );
       // adding this type's package to the table, to support inheritance.
-      typeTable.addComplexSchema( getQualifiedName( javaType.getPackage() ), eltOuter.getQName() );
+      typeTable.addComplexSchema( getQualifiedName( javaType.getPackage() ), schemaTypeName );
+
+      typeTable.addClassNameForQName( schemaTypeName, name );
 
       BeanExcludeInfo beanExcludeInfo = null;
       if ( service.getExcludeInfo() != null ) {
@@ -519,12 +584,8 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
       // we need to get properties only for this bean. hence ignore the super
       // class properties
       BeanInfo beanInfo = Introspector.getBeanInfo( javaType, javaType.getSuperclass() );
-      PropertyDescriptor[] properties = beanInfo.getPropertyDescriptors();
-      PropertyDescriptor property = null;
-      String propertyName = null;
-      for ( int i = 0; i < properties.length; i++ ) {
-        property = properties[i];
-        propertyName = property.getName();
+      for ( PropertyDescriptor property : beanInfo.getPropertyDescriptors() ) {
+        String propertyName = property.getName();
         if ( !property.getName().equals( "class" ) && ( property.getPropertyType() != null ) ) {
           if ( ( beanExcludeInfo == null ) || !beanExcludeInfo.isExcludedProperty( propertyName ) ) {
             property.getPropertyType();
@@ -999,6 +1060,15 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
     return complexType;
   }
 
+  private String getRequestElementSuffix() {
+    String requestElementSuffix = null;
+    Parameter param = service.getParameter( Java2WSDLConstants.REQUEST_ELEMENT_SUFFIX_OPTION_LONG );
+    if ( param != null ) {
+      requestElementSuffix = (String) param.getValue();
+    }
+    return requestElementSuffix;
+  }
+
   protected XmlSchemaComplexType getComplexTypeForElement( XmlSchema xmlSchema, QName name ) {
     for ( XmlSchemaObject object : xmlSchema.getItems() ) {
       if ( object instanceof XmlSchemaElement && ( (XmlSchemaElement) object ).getQName().equals( name ) ) {
@@ -1167,6 +1237,16 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
       name = name.replace( '$', '_' );
     }
     return name;
+  }
+
+  protected String getSimpleClassName( Class type ) {
+    String simpleClassName = type.getName();
+    int idx = simpleClassName.lastIndexOf( '.' );
+    if ( idx != -1 && idx < ( simpleClassName.length() - 1 ) ) {
+      simpleClassName = simpleClassName.substring( idx + 1 );
+    }
+
+    return simpleClassName.replace( '$', '_' );
   }
 
   protected String getQualifiedName( Package packagez ) {

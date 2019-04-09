@@ -151,6 +151,7 @@ public class GenericServlet extends ServletBase {
       pathParams.setParameter( "httpresponse", response ); //$NON-NLS-1$
       pathParams.setParameter( "httprequest", request ); //$NON-NLS-1$
       pathParams.setParameter( "remoteaddr", request.getRemoteAddr() ); //$NON-NLS-1$
+      pathParams.setParameter( "servletconfig", getServletConfig() );
       if ( PentahoSystem.debug ) {
         debug( "GenericServlet contentGeneratorId=" + contentGeneratorId ); //$NON-NLS-1$
         debug( "GenericServlet urlPath=" + urlPath ); //$NON-NLS-1$
