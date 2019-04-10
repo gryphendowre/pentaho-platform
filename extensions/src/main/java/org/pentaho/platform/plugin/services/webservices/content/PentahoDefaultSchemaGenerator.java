@@ -8,50 +8,28 @@ import org.apache.axis2.description.AxisMessage;
 import org.apache.axis2.description.AxisOperation;
 import org.apache.axis2.description.AxisService;
 import org.apache.axis2.description.Parameter;
-import org.apache.axis2.description.java2wsdl.DefaultNamespaceGenerator;
 import org.apache.axis2.description.java2wsdl.DefaultSchemaGenerator;
 import org.apache.axis2.description.java2wsdl.Java2WSDLConstants;
-import org.apache.axis2.description.java2wsdl.Java2WSDLUtils;
-import org.apache.axis2.description.java2wsdl.NamespaceGenerator;
-import org.apache.axis2.description.java2wsdl.SchemaGenerator;
-import org.apache.axis2.description.java2wsdl.TypeTable;
-import org.apache.axis2.description.java2wsdl.bytecode.MethodTable;
 import org.apache.axis2.jaxrs.JAXRSModel;
 import org.apache.axis2.jaxrs.JAXRSUtils;
 import org.apache.axis2.util.JavaUtils;
-import org.apache.axis2.deployment.util.BeanExcludeInfo;
-import org.apache.axis2.deployment.util.Utils;
-
-import org.apache.axis2.description.java2wsdl.bytecode.MethodTable;
 import org.apache.axis2.wsdl.WSDLConstants;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.apache.ws.commons.schema.XmlSchema;
-import org.apache.ws.commons.schema.XmlSchemaAny;
-import org.apache.ws.commons.schema.XmlSchemaCollection;
 import org.apache.ws.commons.schema.XmlSchemaComplexContent;
 import org.apache.ws.commons.schema.XmlSchemaComplexContentExtension;
 import org.apache.ws.commons.schema.XmlSchemaComplexType;
 import org.apache.ws.commons.schema.XmlSchemaElement;
 import org.apache.ws.commons.schema.XmlSchemaEnumerationFacet;
-import org.apache.ws.commons.schema.XmlSchemaForm;
 import org.apache.ws.commons.schema.XmlSchemaImport;
-import org.apache.ws.commons.schema.XmlSchemaObject;
 import org.apache.ws.commons.schema.XmlSchemaSequence;
 import org.apache.ws.commons.schema.XmlSchemaSimpleType;
 import org.apache.ws.commons.schema.XmlSchemaSimpleTypeRestriction;
-import org.apache.ws.commons.schema.XmlSchemaType;
 import org.apache.ws.commons.schema.utils.NamespaceMap;
-import org.apache.ws.commons.schema.utils.NamespacePrefixList;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.w3c.dom.Document;
 
-import javax.activation.DataHandler;
-import javax.jws.WebMethod;
-import javax.jws.WebParam;
-import javax.jws.WebResult;
-import javax.jws.WebService;
 import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.beans.BeanInfo;
@@ -73,116 +51,17 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, SchemaGenerator {
-
-  private static final Log log = LogFactory.getLog( DefaultSchemaGenerator.class );
-  public static final String NAME_SPACE_PREFIX = "ax2"; // axis2 name space
-  private static int prefixCount = 1;
+public class PentahoDefaultSchemaGenerator extends DefaultSchemaGenerator {
+  private static final Log log = LogFactory.getLog( PentahoDefaultSchemaGenerator.class );
   private JAXRSModel classModel;
-  protected Map<String, String> targetNamespacePrefixMap = new Hashtable<String, String>();
-  protected Map<String, XmlSchema> schemaMap = new Hashtable<String, XmlSchema>();
-  protected XmlSchemaCollection xmlSchemaCollection = new XmlSchemaCollection();
-  protected ClassLoader classLoader;
-  protected String className;
-  protected TypeTable typeTable = new TypeTable();
-  // to keep loadded method using JAM
-  protected Method[] methods;
-  //to store byte code method using Axis 1.x codes
-  protected MethodTable methodTable;
-  protected String schemaTargetNameSpace;
-  protected String schema_namespace_prefix;
-  protected String attrFormDefault = null;
-  protected String elementFormDefault = null;
-  protected List<String> excludeMethods = new ArrayList<>();
-  protected List<String> extraClasses = null;
-  protected boolean useWSDLTypesNamespace = false;
-  protected Map<String, String> pkg2nsmap = null;
-  protected NamespaceGenerator nsGen = null;
-  protected String targetNamespace = null;
-  //to keep the list of operation which uses MR other than RPC MR
-  protected List<String> nonRpcMethods = new ArrayList<>();
-  protected Class<?> serviceClass = null;
-  protected AxisService service;
-  // location of the custom schema , if any
-  protected String customSchemaLocation;
-  // location of the class name to package mapping file
-  // File is simple file with qualifiedClassName:SchemaQName
-  protected String mappingFileLocation;
-  //To check whether we need to generate Schema element for Exception
-  protected boolean generateBaseException;
-  protected boolean sortAttributes = true;
-  protected boolean isGenerateWrappedArrayTypes = false;
 
-  public NamespaceGenerator getNsGen() throws Exception {
-    if ( nsGen == null ) {
-      nsGen = new DefaultNamespaceGenerator();
-    }
-    return nsGen;
-  }
-
-  public void setNsGen( NamespaceGenerator nsGen ) {
-    this.nsGen = nsGen;
-  }
-
-  public PentahoDefaultSchemaGenerator( ClassLoader loader, String className,
-                                     String schematargetNamespace,
-                                     String schematargetNamespacePrefix,
-                                     AxisService service ) throws Exception {
-    this.classLoader = loader;
-    this.className = className;
-    this.service = service;
-
-    serviceClass = Class.forName( className, true, loader );
-    methodTable = new MethodTable( serviceClass );
-
-    this.targetNamespace = Java2WSDLUtils.targetNamespaceFromClassName(
-      className, loader, getNsGen() ).toString();
-
-    if ( schematargetNamespace != null
-      && schematargetNamespace.trim().length() != 0 ) {
-      this.schemaTargetNameSpace = schematargetNamespace;
-    } else {
-      this.schemaTargetNameSpace =
-        Java2WSDLUtils.schemaNamespaceFromClassName( className, loader, getNsGen() )
-          .toString();
-    }
-
-    if ( schematargetNamespacePrefix != null
-      && schematargetNamespacePrefix.trim().length() != 0 ) {
-      this.schema_namespace_prefix = schematargetNamespacePrefix;
-    } else {
-      this.schema_namespace_prefix = SCHEMA_NAMESPACE_PRFIX;
-    }
-    if ( service != null ) {
-      Parameter sortAtt = service.getParameter( "SortAttributes" );
-      if ( sortAtt != null && "false".equals( sortAtt.getValue() ) ) {
-        sortAttributes = false;
-      }
-
-      Parameter generateWrappedArrayTypes = service.getParameter( "generateWrappedArrayTypes" );
-      if ( ( generateWrappedArrayTypes != null ) && JavaUtils.isTrue( generateWrappedArrayTypes.getValue() ) ) {
-        isGenerateWrappedArrayTypes = true;
-      }
-      Parameter extraClassesParam = service.getParameter( "exctraClass" );
-      if ( extraClassesParam != null ) {
-        String extraClassesString = (String) extraClassesParam.getValue();
-
-        String[] extraClassesArray = extraClassesString.split( "," );
-        if ( this.extraClasses == null ) {
-          this.extraClasses = new ArrayList<String>();
-        }
-
-        for ( String extraClass : extraClassesArray ) {
-          this.extraClasses.add( extraClass.trim() );
-        }
-      }
-    }
+  public PentahoDefaultSchemaGenerator( ClassLoader loader, String className, String schematargetNamespace,
+                                       String schematargetNamespacePrefix, AxisService service ) throws Exception {
+    super( loader, className, schematargetNamespace, schematargetNamespacePrefix, service );
   }
 
   //This will locad the custom schema file and add that into the schema map
@@ -235,6 +114,15 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
     }
   }
 
+  @Override
+  protected void generateSchemaforGenericFields( XmlSchema xmlSchema, XmlSchemaSequence sequence, Type genericType,
+                                                 String name ) throws Exception {
+    try {
+      super.generateSchemaforGenericFields( xmlSchema, sequence, genericType, name );
+    } catch ( ClassCastException cex ) {
+      log.debug( "Generic Type is not a Class type", cex );
+    }
+  }
 
   /**
    * Generates schema for all the parameters in method. First generates schema for all different
@@ -243,20 +131,21 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
    * @return Returns XmlSchema.
    * @throws Exception
    */
+  @Override
   public Collection<XmlSchema> generateSchema() throws Exception {
     loadCustomSchemaFile();
     loadMappingFile();
     //all most all the time the ittr will have only one class in it
     /**
      * Schema genertaion done in two stage 1. Load all the methods and
-     * create type for methods parameters (if the parameters are Bean
-     * then it will create Complex types foer those , and if the
+     * create type for methods parameters ( if the parameters are Bean
+     * then it will create Complex types foer those, and if the
      * parameters are simple type which decribe in SimpleTypeTable
-     * nothing will happen) 2. In the next stage for all the methods
+     * nothing will happen ) 2. In the next stage for all the methods
      * messages and port types will be creteated
      */
     classModel = JAXRSUtils.getClassModel( serviceClass );
-    List<Method> serviceMethods = new ArrayList<Method>();
+    List<Method> serviceMethods = new ArrayList<>();
     for ( Method method : serviceClass.getMethods() ) {
       if ( method.getDeclaringClass() != Object.class ) {
         serviceMethods.add( method );
@@ -282,13 +171,14 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
     return schemaMap.values();
   }
 
+  @Override
   protected Method[] processMethods( Method[] declaredMethods ) throws Exception {
-    ArrayList<Method> list = new ArrayList<Method>();
+    ArrayList<Method> list = new ArrayList<>();
     //short the elements in the array
     Arrays.sort( declaredMethods, new MathodComparator() );
 
     // since we do not support overload
-    Map<String, Method> uniqueMethods = new LinkedHashMap<String, Method>();
+    Map<String, Method> uniqueMethods = new LinkedHashMap<>();
     XmlSchemaComplexType methodSchemaType;
     XmlSchemaSequence sequence = null;
 
@@ -298,7 +188,7 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
       }
 
       String methodName = jMethod.getName();
-      // no need to think abt this method , since that is system
+      // no need to think abt this method, since that is system
       // config method
       if ( excludeMethods.contains( methodName ) ) {
         continue;
@@ -316,14 +206,6 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
       AxisOperation axisOperation = service.getOperation( new QName( methodName ) );
       if ( axisOperation == null ) {
         axisOperation = Utils.getAxisOperationForJmethod( jMethod );
-        //                if ( WSDL2Constants.MEP_URI_ROBUST_IN_ONLY.equals(
-        //                        axisOperation.getMessageExchangePattern() ) ) {
-        //                    AxisMessage outMessage = axisOperation.getMessage(
-        //                            WSDLConstants.MESSAGE_LABEL_OUT_VALUE );
-        //                    if ( outMessage != null ) {
-        //                        outMessage.setName( methodName + RESPONSE );
-        //                    }
-        //                }
         addToService = true;
       }
       // by now axis operation should be assigned but we better recheck & add the paramether
@@ -347,7 +229,7 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
         service.addParameter( methodName, parameterNames );
       }
 
-      // we need to add the method opration wrapper part even to
+      // we need to add the method operation wrapper part even to
       // empty parameter operations
       sequence = new XmlSchemaSequence();
 
@@ -356,6 +238,7 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
       if ( requestElementSuffix != null ) {
         requestLocalPart += requestElementSuffix;
       }
+
       methodSchemaType = createSchemaTypeForMethodPart( requestLocalPart );
       methodSchemaType.setParticle( sequence );
       inMessage.setElementQName( typeTable.getQNamefortheType( requestLocalPart ) );
@@ -368,14 +251,47 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
       service.addMessageElementQNameToOperationMapping( methodSchemaType.getQName(), axisOperation );
 
       Annotation[][] parameterAnnotation = jMethod.getParameterAnnotations();
+
+      Type[] genericParameterTypes = jMethod.getGenericParameterTypes();
       for ( int j = 0; j < parameters.length; j++ ) {
-        Class methodParameter = parameters[j];
+        Class<?> methodParameter = parameters[j];
         String parameterName = getParameterName( parameterAnnotation, j, parameterNames );
         if ( nonRpcMethods.contains( jMethod.getName() ) ) {
           generateSchemaForType( sequence, null, jMethod.getName() );
           break;
+
+        } else if ( methodParameter != null && Document.class.isAssignableFrom( methodParameter ) ) {
+          generateSchemaTypeForDocument( sequence, parameterName );
+
+        } else if ( methodParameter != null && Map.class.isAssignableFrom( methodParameter ) ) {
+          generateWrappedSchemaTypeForMap( sequence, genericParameterTypes[j], parameterName );
+
+        } else if ( methodParameter != null && Collection.class.isAssignableFrom( methodParameter ) ) {
+          generateWrappedSchemaTypeForCollection( sequence, genericParameterTypes[j], parameterName );
+
+        } else if ( methodParameter != null && Enum.class.isAssignableFrom( methodParameter ) ) {
+          generateWrappedSchemaTypeForEnum( sequence, parameterName, methodParameter, false );
         } else {
-          generateSchemaForType( sequence, methodParameter, parameterName );
+          Type genericParameterType = genericParameterTypes[j];
+          Type genericType = null;
+          if ( genericParameterType instanceof ParameterizedType ) {
+            ParameterizedType aType = (ParameterizedType) genericParameterType;
+            Type[] parameterArgTypes = aType.getActualTypeArguments();
+            genericType = parameterArgTypes[0];
+            generateSchemaForType( sequence, genericType, parameterName, true );
+          } else {
+            if ( methodParameter.isArray() ) {
+              Class<?> componentType = methodParameter.getComponentType();
+              if ( Enum.class.isAssignableFrom( componentType ) ) {
+                generateWrappedSchemaTypeForEnum( sequence, parameterName, componentType, true );
+              } else {
+                generateSchemaForType( sequence, methodParameter, parameterName );
+              }
+
+            } else {
+              generateSchemaForType( sequence, methodParameter, parameterName );
+            }
+          }
         }
       }
       // for its return type
@@ -389,16 +305,50 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
         Type genericParameterType = jMethod.getGenericReturnType();
         if ( nonRpcMethods.contains( jMethod.getName() ) ) {
           generateSchemaForType( sequence, null, returnName );
+
+        } else if ( returnType != null && Document.class.isAssignableFrom( returnType ) ) {
+          generateSchemaTypeForDocument( sequence, returnName );
+
+        } else if ( Map.class.isAssignableFrom( returnType ) ) {
+          if ( genericParameterType instanceof ParameterizedType ) {
+            generateWrappedSchemaTypeForMap( sequence, genericParameterType, returnName );
+          } else {
+            generateWrappedSchemaTypeForMap( sequence, returnType, returnName );
+          }
+        } else if ( Collection.class.isAssignableFrom( returnType ) ) {
+          if ( genericParameterType instanceof ParameterizedType ) {
+            generateWrappedSchemaTypeForCollection( sequence, genericParameterType, returnName );
+          } else {
+            generateWrappedSchemaTypeForCollection( sequence, genericParameterType, returnName );
+          }
+        } else if ( Enum.class.isAssignableFrom( returnType ) ) {
+          generateWrappedSchemaTypeForEnum( sequence, returnName, returnType, false );
+        } else if ( genericParameterType instanceof ParameterizedType ) {
+          ParameterizedType aType = (ParameterizedType) genericParameterType;
+          Type[] parameterArgTypes = aType.getActualTypeArguments();
+          generateSchemaForType( sequence, parameterArgTypes[0], returnName, true );
         } else {
-          generateSchemaForType( sequence, returnType, returnName );
+          if ( returnType.isArray() ) {
+            Class<?> returnComponentType = returnType.getComponentType();
+            if ( Enum.class.isAssignableFrom( returnComponentType ) ) {
+              generateWrappedSchemaTypeForEnum( sequence, returnName, returnComponentType, true );
+            } else {
+              generateSchemaForType( sequence, returnType, returnName );
+            }
+          } else {
+            generateSchemaForType( sequence, returnType, returnName );
+          }
         }
+
         AxisMessage outMessage = axisOperation.getMessage( WSDLConstants.MESSAGE_LABEL_OUT_VALUE );
         outMessage.setElementQName( typeTable.getQNamefortheType( partQname ) );
         outMessage.setName( partQname );
+
         Parameter outparam = service.getParameter( Java2WSDLConstants.MESSAGE_PART_NAME_OPTION_LONG );
         if ( outparam != null ) {
           outMessage.setPartName( (String) outparam.getValue() );
         }
+
         service.addMessageElementQNameToOperationMapping( methodSchemaType.getQName(), axisOperation );
       }
       if ( addToService ) {
@@ -413,7 +363,9 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
    * - No matter what it will generate Schema element for java.lang.Exception so that for other
    * exception which extend java.lang.Excetion can use as the base class type
    */
-  protected void processException( Method jMethod, AxisOperation axisOperation ) throws Exception {
+  @Override
+  protected void processException( Method jMethod,
+                                  AxisOperation axisOperation ) throws Exception {
     XmlSchemaComplexType methodSchemaType;
     XmlSchemaSequence sequence;
     if ( jMethod.getExceptionTypes().length > 0 ) {
@@ -463,18 +415,135 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
       }
     }
   }
-  private void generateComplexTypeforException() {
-    XmlSchemaSequence sequence = new XmlSchemaSequence();
-    XmlSchema xmlSchema = getXmlSchema( schemaTargetNameSpace );
-    QName elementName = new QName( schemaTargetNameSpace, "Exception", schema_namespace_prefix );
-    XmlSchemaComplexType complexType = new XmlSchemaComplexType( xmlSchema, false );
-    complexType.setName( "Exception" );
-    xmlSchema.getItems().add( complexType );
-    xmlSchema.getSchemaTypes().put( elementName, complexType );
-    typeTable.addComplexSchema( Exception.class.getName(), elementName );
-    QName schemaTypeName = new QName( Java2WSDLConstants.URI_2001_SCHEMA_XSD, "string" );
-    addContentToMethodSchemaType( sequence, schemaTypeName, "Message", false );
-    complexType.setParticle( sequence );
+
+  private QName generateSchemaForType( XmlSchemaSequence sequence, Class<?> type, String partName )throws Exception {
+    boolean isArrayType = false;
+    try {
+      if ( type != null ) {
+        isArrayType = type.isArray();
+      }
+      if ( isArrayType ) {
+        if ( type.getComponentType().isArray() ) {
+          // this is a double array element
+          Class<?> simpleType = type.getComponentType();
+          String simpleTypeName = "";
+          while ( simpleType.isArray() ) {
+            simpleTypeName += "ArrayOf";
+            simpleType = simpleType.getComponentType();
+          }
+          simpleTypeName += getSimpleClassName( simpleType );
+          return processParameterArrayTypes( sequence, type, partName, simpleTypeName );
+        } else {
+          type = type.getComponentType();
+        }
+      }
+      if ( AxisFault.class.getName().equals( type ) ) {
+        return null;
+      }
+      String classTypeName;
+      if ( type == null ) {
+        classTypeName = "java.lang.Object";
+      } else {
+        classTypeName = type.getName();
+      }
+      if ( isArrayType && "byte".equals( classTypeName ) ) {
+        classTypeName = "base64Binary";
+        isArrayType = false;
+      }
+
+      if ( isDataHandler( type ) ) {
+        classTypeName = "base64Binary";
+      }
+
+      return generateSchemaTypeforNameCommon( sequence, partName, isArrayType, type, classTypeName );
+    } catch ( ClassCastException cex ) {
+      log.debug( "Generic Type is not a Class type", cex );
+      return null;
+    }
+  }
+
+  private QName generateSchemaForType( XmlSchemaSequence sequence, Type genericType, String partName, boolean isArrayType )
+    throws Exception {
+
+    try {
+      Class<?> type;
+      if ( genericType instanceof GenericArrayType ) {
+        // this is a double array element
+        Class<?> simpleType = (Class<?>) ( (GenericArrayType) genericType ).getGenericComponentType();
+        String simpleTypeName = "";
+        while ( simpleType.isArray() ) {
+          simpleTypeName += "ArrayOf";
+          simpleType = simpleType.getComponentType();
+        }
+        simpleTypeName += simpleType.getSimpleName();
+
+        XmlSchema xmlSchema = getXmlSchema( schemaTargetNameSpace );
+        if ( xmlSchema.getTypeByName( simpleTypeName ) == null ) {
+          XmlSchemaComplexType xmlSchemaComplexType = new XmlSchemaComplexType( xmlSchema, false );
+          XmlSchemaSequence xmlSchemaSequence = new XmlSchemaSequence();
+          xmlSchemaComplexType.setParticle( xmlSchemaSequence );
+          generateSchemaForType( xmlSchemaSequence, simpleType, "array", true );
+          xmlSchemaComplexType.setName( simpleTypeName );
+          xmlSchema.getItems().add( xmlSchemaComplexType );
+          xmlSchema.getSchemaTypes().put( new QName( xmlSchema.getTargetNamespace(), simpleTypeName ),
+            xmlSchemaComplexType );
+        }
+
+        if ( isGenerateWrappedArrayTypes ) {
+          XmlSchemaElement xmlSchemaElement = new XmlSchemaElement( xmlSchema, false );
+          xmlSchemaElement.setName( partName + "Wrapper" );
+          xmlSchemaElement.setNillable( true );
+          sequence.getItems().add( xmlSchemaElement );
+
+          String complexTypeName = simpleTypeName + "Wrapper";
+
+          XmlSchemaComplexType xmlSchemaComplexType = new XmlSchemaComplexType( xmlSchema, false );
+          XmlSchemaSequence xmlSchemaSequence = new XmlSchemaSequence();
+          xmlSchemaComplexType.setParticle( xmlSchemaSequence );
+          xmlSchemaComplexType.setName( complexTypeName );
+
+          xmlSchema.getItems().add( xmlSchemaComplexType );
+          xmlSchema.getSchemaTypes().put( new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ),
+            xmlSchemaComplexType );
+          addContentToMethodSchemaType( xmlSchemaSequence, new QName( xmlSchema.getTargetNamespace(), simpleTypeName ),
+            "array", true );
+
+          xmlSchemaElement.setSchemaType( xmlSchemaComplexType );
+          xmlSchemaElement.setSchemaTypeName( new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ) );
+          return new QName( xmlSchema.getTargetNamespace(), complexTypeName );
+        } else {
+          addContentToMethodSchemaType( sequence, new QName( xmlSchema.getTargetNamespace(), simpleTypeName ),
+            partName, true );
+          return new QName( xmlSchema.getTargetNamespace(), simpleTypeName );
+        }
+
+
+      } else {
+        type = (Class<?>) genericType;
+      }
+      if ( AxisFault.class.getName().equals( type ) ) {
+        return null;
+      }
+      String classTypeName;
+      if ( type == null ) {
+        classTypeName = "java.lang.Object";
+      } else {
+        classTypeName = type.getName();
+      }
+      if ( isArrayType && "byte".equals( classTypeName ) ) {
+        classTypeName = "base64Binary";
+        isArrayType = false;
+      }
+
+      if ( isDataHandler( type ) ) {
+        classTypeName = "base64Binary";
+      }
+
+      return generateSchemaTypeforNameCommon( sequence, partName, isArrayType, type, classTypeName );
+    } catch ( ClassCastException cex ) {
+      log.debug( "Generic Type is not a Class type", cex );
+      return null;
+    }
   }
 
   /**
@@ -483,7 +552,8 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
    * @param javaClassType : Class to whcih need to generate Schema
    * @return : Generated QName
    */
-  protected QName generateSchema( Class javaClassType ) throws Exception {
+  @Override
+  protected QName generateSchema( Class<?> javaClassType ) throws Exception {
     Class javaType = javaClassType;
     if ( javaClassType.isInterface() ) {
       Object pentahoObj = PentahoSystem.get( javaClassType, null );
@@ -562,6 +632,7 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
       }
 
       complexType.setName( simpleName );
+
       if ( Modifier.isAbstract( javaType.getModifiers() ) ) {
         complexType.setAbstract( true );
       }
@@ -584,16 +655,50 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
       // we need to get properties only for this bean. hence ignore the super
       // class properties
       BeanInfo beanInfo = Introspector.getBeanInfo( javaType, javaType.getSuperclass() );
+
       for ( PropertyDescriptor property : beanInfo.getPropertyDescriptors() ) {
         String propertyName = property.getName();
         if ( !property.getName().equals( "class" ) && ( property.getPropertyType() != null ) ) {
-          if ( ( beanExcludeInfo == null ) || !beanExcludeInfo.isExcludedProperty( propertyName ) ) {
-            property.getPropertyType();
-            generateSchemaforFieldsandProperties( xmlSchema,
-              sequence,
-              property.getPropertyType(),
-              propertyName,
-              property.getPropertyType().isArray() );
+          if ( property.getReadMethod() != null
+            && ( ( beanExcludeInfo == null )
+            || !beanExcludeInfo.isExcludedProperty( propertyName ) ) ) {
+            Type genericFieldType = property.getReadMethod().getGenericReturnType();
+            if ( genericFieldType instanceof ParameterizedType ) {
+              ParameterizedType aType = (ParameterizedType) genericFieldType;
+              Type[] fieldArgTypes = aType.getActualTypeArguments();
+              if ( Map.class.isAssignableFrom( (Class) aType.getRawType() ) ) {
+                generateWrappedSchemaTypeForMap( sequence, aType, propertyName );
+
+              } else if ( Collection.class.isAssignableFrom( (Class) aType.getRawType() ) ) {
+                generateWrappedSchemaTypeForCollection( sequence, aType, propertyName );
+              } else {
+                try {
+                  generateSchemaforGenericFields( xmlSchema, sequence, fieldArgTypes[0], propertyName );
+                } catch ( Exception e ) {
+                  generateSchemaforFieldsandProperties( xmlSchema, sequence, property.getPropertyType(), propertyName,
+                    property.getPropertyType().isArray() );
+                }
+              }
+
+            } else if ( genericFieldType != null && !( genericFieldType instanceof ParameterizedType )
+              && Document.class.isAssignableFrom( (Class) genericFieldType ) ) {
+              generateSchemaTypeForDocument( sequence, propertyName );
+
+            } else {
+              if ( genericFieldType != null && Map.class.isAssignableFrom( (Class) genericFieldType ) ) {
+                generateWrappedSchemaTypeForMap( sequence, genericFieldType, propertyName );
+
+              } else if ( genericFieldType != null && Collection.class.isAssignableFrom( (Class) genericFieldType ) ) {
+                generateWrappedSchemaTypeForCollection( sequence, genericFieldType, propertyName );
+
+              } else if ( genericFieldType != null && Enum.class.isAssignableFrom( (Class) genericFieldType ) ) {
+                generateWrappedSchemaTypeForEnum( sequence, propertyName, (Class) genericFieldType, false );
+
+              } else {
+                generateSchemaforFieldsandProperties( xmlSchema, sequence, property.getPropertyType(), propertyName,
+                  property.getPropertyType().isArray() );
+              }
+            }
           }
         }
       }
@@ -601,311 +706,19 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
     return schemaTypeName;
   }
 
-
-  // moved code common to Fields & properties out of above method
-  protected void generateSchemaforFieldsandProperties( XmlSchema xmlSchema,
-                                                       XmlSchemaSequence sequence, Class type,
-                                                       String name, boolean isArrayType )
-    throws Exception {
-    String propertyName;
-    if ( isArrayType ) {
-      propertyName = type.getComponentType().getName();
-      if ( type.getComponentType().isArray() ) {
-        // this is a doble array element
-        Class simpleType = type.getComponentType();
-        String simpleTypeName = "";
-        while ( simpleType.isArray() ) {
-          simpleTypeName += "ArrayOf";
-          simpleType = simpleType.getComponentType();
-        }
-        simpleTypeName += simpleType.getSimpleName();
-
-        if ( xmlSchema.getTypeByName( simpleTypeName ) == null ) {
-          XmlSchemaComplexType xmlSchemaComplexType = new XmlSchemaComplexType( xmlSchema, false );
-          XmlSchemaSequence xmlSchemaSequence = new XmlSchemaSequence();
-          xmlSchemaComplexType.setParticle( xmlSchemaSequence );
-          generateSchemaforFieldsandProperties( xmlSchema,
-            xmlSchemaSequence, type.getComponentType(), "array", true );
-
-          xmlSchemaComplexType.setName( simpleTypeName );
-          xmlSchema.getItems().add( xmlSchemaComplexType );
-          xmlSchema.getSchemaTypes().put(
-            new QName( xmlSchema.getTargetNamespace(), simpleTypeName ), xmlSchemaComplexType );
-        }
-
-        if ( isGenerateWrappedArrayTypes ) {
-          XmlSchemaElement xmlSchemaElement = new XmlSchemaElement( xmlSchema, false );
-          xmlSchemaElement.setName( name + "Wrapper" );
-          xmlSchemaElement.setNillable( true );
-          sequence.getItems().add( xmlSchemaElement );
-
-          String complexTypeName = simpleTypeName + "Wrapper";
-
-          XmlSchemaComplexType xmlSchemaComplexType = new XmlSchemaComplexType( xmlSchema, false );
-          XmlSchemaSequence xmlSchemaSequence = new XmlSchemaSequence();
-          xmlSchemaComplexType.setParticle( xmlSchemaSequence );
-          xmlSchemaComplexType.setName( complexTypeName );
-
-          xmlSchema.getItems().add( xmlSchemaComplexType );
-          xmlSchema.getSchemaTypes().put(
-            new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ),
-            xmlSchemaComplexType );
-          addContentToMethodSchemaType( xmlSchemaSequence,
-            new QName( xmlSchema.getTargetNamespace(), simpleTypeName ),
-            "array",
-            true );
-
-          xmlSchemaElement.setSchemaType( xmlSchemaComplexType );
-          xmlSchemaElement.setSchemaTypeName( new QName( schemaTargetNameSpace,
-            xmlSchemaComplexType.getName() ) );
-
-        } else {
-          addContentToMethodSchemaType( sequence,
-            new QName( xmlSchema.getTargetNamespace(), simpleTypeName ),
-            name,
-            true );
-
-        }
-        return;
-      }
-    } else {
-      propertyName = type.getName();
-    }
-    if ( isArrayType && "byte".equals( propertyName ) ) {
-      propertyName = "base64Binary";
-    }
-    if ( isDataHandler( type ) ) {
-      propertyName = "base64Binary";
-    }
-    if ( typeTable.isSimpleType( propertyName ) ) {
-
-      if ( isGenerateWrappedArrayTypes && isArrayType ) {
-
-        XmlSchemaElement xmlSchemaElement = new XmlSchemaElement( xmlSchema, false );
-        xmlSchemaElement.setName( name + "Wrapper" );
-        xmlSchemaElement.setNillable( true );
-        sequence.getItems().add( xmlSchemaElement );
-
-        String complexTypeName =
-          typeTable.getSimpleSchemaTypeName( propertyName ).getLocalPart() + "Wrapper";
-
-        XmlSchemaComplexType xmlSchemaComplexType = null;
-        if ( xmlSchema.getTypeByName( complexTypeName ) == null ) {
-          xmlSchemaComplexType = new XmlSchemaComplexType( xmlSchema, false );
-          XmlSchemaSequence xmlSchemaSequence = new XmlSchemaSequence();
-          xmlSchemaComplexType.setParticle( xmlSchemaSequence );
-          xmlSchemaComplexType.setName( complexTypeName );
-
-          xmlSchema.getItems().add( xmlSchemaComplexType );
-          xmlSchema.getSchemaTypes().put(
-            new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ),
-            xmlSchemaComplexType );
-          addElementToSequence( "array",
-            typeTable.getSimpleSchemaTypeName( propertyName ),
-            xmlSchemaSequence,
-            propertyName.equals( "base64Binary" ),
-            isArrayType,
-            type.isPrimitive() );
-        } else {
-          xmlSchemaComplexType = (XmlSchemaComplexType) xmlSchema.getTypeByName( complexTypeName );
-        }
-
-        xmlSchemaElement.setSchemaType( xmlSchemaComplexType );
-        xmlSchemaElement.setSchemaTypeName( new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ) );
-
-
-      } else {
-        addElementToSequence( name,
-          typeTable.getSimpleSchemaTypeName( propertyName ),
-          sequence,
-          propertyName.equals( "base64Binary" ),
-          isArrayType,
-          type.isPrimitive() );
-      }
-
-    } else {
-      if ( isArrayType ) {
-        generateSchema( type.getComponentType() );
-      } else {
-        generateSchema( type );
-      }
-
-      if ( isGenerateWrappedArrayTypes && isArrayType ) {
-
-        XmlSchemaElement xmlSchemaElement = new XmlSchemaElement( xmlSchema, false );
-        xmlSchemaElement.setName( name + "Wrapper" );
-        xmlSchemaElement.setNillable( true );
-        sequence.getItems().add( xmlSchemaElement );
-
-        String complexTypeName =
-          typeTable.getSimpleSchemaTypeName( propertyName ).getLocalPart() + "Wrapper";
-
-        XmlSchemaComplexType xmlSchemaComplexType = null;
-        if ( xmlSchema.getTypeByName( complexTypeName ) == null ) {
-          xmlSchemaComplexType = new XmlSchemaComplexType( xmlSchema, false );
-          XmlSchemaSequence xmlSchemaSequence = new XmlSchemaSequence();
-          xmlSchemaComplexType.setParticle( xmlSchemaSequence );
-          xmlSchemaComplexType.setName( complexTypeName );
-
-          xmlSchema.getItems().add( xmlSchemaComplexType );
-          xmlSchema.getSchemaTypes().put(
-            new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ),
-            xmlSchemaComplexType );
-          addElementToSequence( "array",
-            typeTable.getSimpleSchemaTypeName( propertyName ),
-            xmlSchemaSequence,
-            propertyName.equals( "base64Binary" ),
-            isArrayType,
-            type.isPrimitive() );
-        } else {
-          xmlSchemaComplexType = (XmlSchemaComplexType) xmlSchema.getTypeByName( complexTypeName );
-        }
-
-        xmlSchemaElement.setSchemaType( xmlSchemaComplexType );
-        xmlSchemaElement.setSchemaTypeName( new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ) );
-
-
-      } else {
-        addElementToSequence( name,
-          typeTable.getComplexSchemaType( propertyName ),
-          sequence,
-          false,
-          isArrayType,
-          type.isPrimitive() );
-      }
-
-      if ( typeTable.getComplexSchemaType( propertyName ) != null && !( (NamespaceMap) xmlSchema.getNamespaceContext() ).values().
-        contains( typeTable.getComplexSchemaType( propertyName ).getNamespaceURI() ) ) {
-        XmlSchemaImport importElement = new XmlSchemaImport( xmlSchema );
-        importElement.setNamespace(
-          typeTable.getComplexSchemaType( propertyName ).getNamespaceURI() );
-        xmlSchema.getItems().add( importElement );
-        ( (NamespaceMap) xmlSchema.getNamespaceContext() ).
-          put( generatePrefix(),
-            typeTable.getComplexSchemaType( propertyName ).getNamespaceURI() );
-      }
-    }
-
-
-  }
-
-  private void addElementToSequence( String name,
-                                     QName propertyQName,
-                                     XmlSchemaSequence sequence,
-                                     boolean isBase64Binary,
-                                     boolean isArryType,
-                                     boolean isPrimitive ) {
-    XmlSchemaElement elt1 = new XmlSchemaElement( getXmlSchema( schemaTargetNameSpace  ), false );
-    elt1.setName( name );
-    elt1.setSchemaTypeName( propertyQName );
-    sequence.getItems().add( elt1 );
-    if ( isArryType && !isBase64Binary ) {
-      elt1.setMaxOccurs( Long.MAX_VALUE );
-    }
-    elt1.setMinOccurs( 0 );
-    if ( !isPrimitive ) {
-      elt1.setNillable( true );
-    }
-  }
-
-
-  private QName generateSchemaForType( XmlSchemaSequence sequence, Class type, String partName )
-    throws Exception {
-
-    boolean isArrayType = false;
-    if ( type != null ) {
-      isArrayType = type.isArray();
-    }
-    if ( isArrayType ) {
-      if ( type.getComponentType().isArray() ) {
-        // this is a doble array element
-        Class simpleType = type.getComponentType();
-        String simpleTypeName = "";
-        while ( simpleType.isArray() ) {
-          simpleTypeName += "ArrayOf";
-          simpleType = simpleType.getComponentType();
-        }
-        simpleTypeName += simpleType.getSimpleName();
-
-        XmlSchema xmlSchema = getXmlSchema( schemaTargetNameSpace );
-        if ( xmlSchema.getTypeByName( simpleTypeName ) == null ) {
-          XmlSchemaComplexType xmlSchemaComplexType = new XmlSchemaComplexType( xmlSchema, false );
-          XmlSchemaSequence xmlSchemaSequence = new XmlSchemaSequence();
-          xmlSchemaComplexType.setParticle( xmlSchemaSequence );
-          generateSchemaForType( xmlSchemaSequence, type.getComponentType(), "array" );
-          xmlSchemaComplexType.setName( simpleTypeName );
-          xmlSchema.getItems().add( xmlSchemaComplexType );
-          xmlSchema.getSchemaTypes().put(
-            new QName( xmlSchema.getTargetNamespace(), simpleTypeName ), xmlSchemaComplexType );
-        }
-
-        if ( isGenerateWrappedArrayTypes ) {
-          XmlSchemaElement xmlSchemaElement = new XmlSchemaElement( xmlSchema, false );
-          xmlSchemaElement.setName( partName + "Wrapper" );
-          xmlSchemaElement.setNillable( true );
-          sequence.getItems().add( xmlSchemaElement );
-
-          String complexTypeName = simpleTypeName + "Wrapper";
-
-          XmlSchemaComplexType xmlSchemaComplexType = new XmlSchemaComplexType( xmlSchema, false );
-          XmlSchemaSequence xmlSchemaSequence = new XmlSchemaSequence();
-          xmlSchemaComplexType.setParticle( xmlSchemaSequence );
-          xmlSchemaComplexType.setName( complexTypeName );
-
-          xmlSchema.getItems().add( xmlSchemaComplexType );
-          xmlSchema.getSchemaTypes().put(
-            new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ),
-            xmlSchemaComplexType );
-          addContentToMethodSchemaType( xmlSchemaSequence,
-            new QName( xmlSchema.getTargetNamespace(), simpleTypeName ),
-            "array",
-            true );
-
-          xmlSchemaElement.setSchemaType( xmlSchemaComplexType );
-          xmlSchemaElement.setSchemaTypeName( new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ) );
-          return new QName( xmlSchema.getTargetNamespace(), complexTypeName );
-        } else {
-          addContentToMethodSchemaType( sequence,
-            new QName( xmlSchema.getTargetNamespace(), simpleTypeName ),
-            partName,
-            true );
-          return new QName( xmlSchema.getTargetNamespace(), simpleTypeName );
-        }
-
-
-      } else {
-        type = type.getComponentType();
-      }
-    }
-    if ( AxisFault.class.getName().equals( type ) ) {
-      return null;
-    }
-    String classTypeName;
-    if ( type == null ) {
-      classTypeName = "java.lang.Object";
-    } else {
-      classTypeName = type.getName();
-    }
-    if ( isArrayType && "byte".equals( classTypeName ) ) {
-      classTypeName = "base64Binary";
-      isArrayType = false;
-    }
-
-    if ( isDataHandler( type ) ) {
-      classTypeName = "base64Binary";
-    }
+  private QName generateSchemaTypeforNameCommon( XmlSchemaSequence sequence, String partName, boolean isArrayType,
+                                                 Class<?> type, String classTypeName ) throws Exception {
     QName schemaTypeName = typeTable.getSimpleSchemaTypeName( classTypeName );
     if ( schemaTypeName == null ) {
       schemaTypeName = generateSchema( type );
       if ( isGenerateWrappedArrayTypes && isArrayType ) {
-
-        XmlSchemaElement xmlSchemaElement = new XmlSchemaElement( getXmlSchema( schemaTargetNameSpace ), false );
+        XmlSchema xmlSchema = getXmlSchema( schemaTargetNameSpace );
+        XmlSchemaElement xmlSchemaElement = new XmlSchemaElement( xmlSchema, false );
         xmlSchemaElement.setName( partName + "Wrapper" );
         xmlSchemaElement.setNillable( true );
         sequence.getItems().add( xmlSchemaElement );
 
         String complexTypeName = schemaTypeName.getLocalPart() + "Wrapper";
-        XmlSchema xmlSchema = getXmlSchema( schemaTargetNameSpace );
 
         XmlSchemaComplexType xmlSchemaComplexType = null;
         if ( xmlSchema.getTypeByName( complexTypeName ) == null ) {
@@ -915,13 +728,9 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
           xmlSchemaComplexType.setName( complexTypeName );
 
           xmlSchema.getItems().add( xmlSchemaComplexType );
-          xmlSchema.getSchemaTypes().put(
-            new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ),
+          xmlSchema.getSchemaTypes().put( new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ),
             xmlSchemaComplexType );
-          addContentToMethodSchemaType( xmlSchemaSequence,
-            schemaTypeName,
-            "array",
-            isArrayType );
+          addContentToMethodSchemaType( xmlSchemaSequence, schemaTypeName, "array", isArrayType );
         } else {
           xmlSchemaComplexType = (XmlSchemaComplexType) xmlSchema.getTypeByName( complexTypeName );
         }
@@ -929,12 +738,8 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
         xmlSchemaElement.setSchemaType( xmlSchemaComplexType );
         xmlSchemaElement.setSchemaTypeName( new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ) );
 
-
       } else {
-        addContentToMethodSchemaType( sequence,
-          schemaTypeName,
-          partName,
-          isArrayType );
+        addContentToMethodSchemaType( sequence, schemaTypeName, partName, isArrayType );
       }
 
       String schemaNamespace;
@@ -943,14 +748,13 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
 
     } else {
       if ( isGenerateWrappedArrayTypes && isArrayType ) {
-
-        XmlSchemaElement xmlSchemaElement = new XmlSchemaElement( getXmlSchema( schemaTargetNameSpace  ), false );
+        XmlSchema xmlSchema = getXmlSchema( schemaTargetNameSpace );
+        XmlSchemaElement xmlSchemaElement = new XmlSchemaElement( xmlSchema, false );
         xmlSchemaElement.setName( partName + "Wrapper" );
         xmlSchemaElement.setNillable( true );
         sequence.getItems().add( xmlSchemaElement );
 
         String complexTypeName = schemaTypeName.getLocalPart() + "Wrapper";
-        XmlSchema xmlSchema = getXmlSchema( schemaTargetNameSpace );
 
         XmlSchemaComplexType xmlSchemaComplexType = null;
         if ( xmlSchema.getTypeByName( complexTypeName ) == null ) {
@@ -960,13 +764,9 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
           xmlSchemaComplexType.setName( complexTypeName );
 
           xmlSchema.getItems().add( xmlSchemaComplexType );
-          xmlSchema.getSchemaTypes().put(
-            new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ),
+          xmlSchema.getSchemaTypes().put( new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ),
             xmlSchemaComplexType );
-          addContentToMethodSchemaType( xmlSchemaSequence,
-            schemaTypeName,
-            "array",
-            isArrayType );
+          addContentToMethodSchemaType( xmlSchemaSequence, schemaTypeName, "array", isArrayType );
         } else {
           xmlSchemaComplexType = (XmlSchemaComplexType) xmlSchema.getTypeByName( complexTypeName );
         }
@@ -974,90 +774,146 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
         xmlSchemaElement.setSchemaType( xmlSchemaComplexType );
         xmlSchemaElement.setSchemaTypeName( new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ) );
 
-
       } else {
-        addContentToMethodSchemaType( sequence,
-          schemaTypeName,
-          partName,
-          isArrayType );
+        addContentToMethodSchemaType( sequence, schemaTypeName, partName, isArrayType );
       }
-
     }
     addImport( getXmlSchema( schemaTargetNameSpace ), schemaTypeName );
     return schemaTypeName;
   }
 
-  protected boolean isDataHandler( Class clazz ) {
-    return clazz != null && DataHandler.class.isAssignableFrom( clazz );
-  }
-
-  protected void addContentToMethodSchemaType( XmlSchemaSequence sequence,
-                                               QName schemaTypeName,
-                                               String paraName,
-                                               boolean isArray ) {
-    XmlSchemaElement elt1 = new XmlSchemaElement( getXmlSchema( schemaTargetNameSpace ), false );
-    elt1.setName( paraName );
-
-    elt1.setSchemaTypeName( schemaTypeName );
-    if ( sequence != null ) {
-      sequence.getItems().add( elt1 );
-    }
-
-    if ( isArray ) {
-      elt1.setMaxOccurs( Long.MAX_VALUE );
-    }
-
-    // Adding in code change between v.1.6.2 and 1.6.3, they used two different if statements that were the same
-    // to set these values, so this was written to consolidate the duplicate code.
-    if ( !( "int".equals( schemaTypeName.getLocalPart() )
-      || "double".equals( schemaTypeName.getLocalPart() )
-      || "long".equals( schemaTypeName.getLocalPart() )
-      || "boolean".equals( schemaTypeName.getLocalPart() )
-      || "short".equals( schemaTypeName.getLocalPart() )
-      || "byte".equals( schemaTypeName.getLocalPart() )
-      || "unsignedShort".equals( schemaTypeName.getLocalPart() )
-      || "float".equals( schemaTypeName.getLocalPart() ) ) ) {
-      elt1.setMinOccurs( 0 );
-      elt1.setNillable( true );
-    }
-  }
-
-  private XmlSchemaComplexType createSchemaTypeForMethodPart( String localPartName ) {
+  private QName processParameterArrayTypes( XmlSchemaSequence sequence, Class<?> type, String partName,
+                                            String simpleTypeName ) throws Exception {
     XmlSchema xmlSchema = getXmlSchema( schemaTargetNameSpace );
-    QName elementName =
-      new QName( this.schemaTargetNameSpace, localPartName, this.schema_namespace_prefix );
-
-    XmlSchemaComplexType complexType = getComplexTypeForElement( xmlSchema, elementName );
-    if ( complexType == null ) {
-      complexType = new XmlSchemaComplexType( xmlSchema, false );
-
-      XmlSchemaElement globalElement = new XmlSchemaElement( xmlSchema, false );
-      globalElement.setSchemaType( complexType );
-      globalElement.setName( localPartName );
-      xmlSchema.getItems().add( globalElement );
-      xmlSchema.getElements().put( elementName, globalElement );
+    if ( xmlSchema.getTypeByName( simpleTypeName ) == null ) {
+      XmlSchemaComplexType xmlSchemaComplexType = new XmlSchemaComplexType( xmlSchema, false );
+      XmlSchemaSequence xmlSchemaSequence = new XmlSchemaSequence();
+      xmlSchemaComplexType.setParticle( xmlSchemaSequence );
+      generateSchemaForType( xmlSchemaSequence, type.getComponentType(), "array" );
+      xmlSchemaComplexType.setName( simpleTypeName );
+      xmlSchema.getItems().add( xmlSchemaComplexType );
+      xmlSchema.getSchemaTypes().put( new QName( xmlSchema.getTargetNamespace(), simpleTypeName ),
+        xmlSchemaComplexType );
     }
-    typeTable.addComplexSchema( localPartName, elementName );
 
-    return complexType;
+    if ( isGenerateWrappedArrayTypes ) {
+      XmlSchemaElement xmlSchemaElement = new XmlSchemaElement( xmlSchema, false );
+      xmlSchemaElement.setName( partName + "Wrapper" );
+      xmlSchemaElement.setNillable( true );
+      sequence.getItems().add( xmlSchemaElement );
+
+      String complexTypeName = simpleTypeName + "Wrapper";
+
+      XmlSchemaComplexType xmlSchemaComplexType = new XmlSchemaComplexType( xmlSchema, false );
+      XmlSchemaSequence xmlSchemaSequence = new XmlSchemaSequence();
+      xmlSchemaComplexType.setParticle( xmlSchemaSequence );
+      xmlSchemaComplexType.setName( complexTypeName );
+
+      xmlSchema.getItems().add( xmlSchemaComplexType );
+      xmlSchema.getSchemaTypes().put( new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ),
+        xmlSchemaComplexType );
+      addContentToMethodSchemaType( xmlSchemaSequence, new QName( xmlSchema.getTargetNamespace(), simpleTypeName ),
+        "array", true );
+
+      xmlSchemaElement.setSchemaType( xmlSchemaComplexType );
+      xmlSchemaElement.setSchemaTypeName( new QName( schemaTargetNameSpace, xmlSchemaComplexType.getName() ) );
+      return new QName( xmlSchema.getTargetNamespace(), complexTypeName );
+    } else {
+      addContentToMethodSchemaType( sequence, new QName( xmlSchema.getTargetNamespace(), simpleTypeName ),
+        partName, true );
+      return new QName( xmlSchema.getTargetNamespace(), simpleTypeName );
+    }
   }
 
-  private XmlSchemaComplexType createSchemaTypeForFault( String localPartName ) {
-    XmlSchema xmlSchema = getXmlSchema( schemaTargetNameSpace );
-    QName elementName =
-      new QName( this.schemaTargetNameSpace, localPartName, this.schema_namespace_prefix );
+  /**
+   * Generate schema type for map parameter.
+   *
+   * @param entrySequence the entry sequence
+   * @param parameterType the parameter type
+   * @param elementName the element name
+   * @throws Exception the exception
+   */
+  @Override
+  protected void generateSchemaTypeForMapParameter( XmlSchemaSequence entrySequence, Type parameterType,
+                                                    String elementName ) throws Exception {
+    if ( parameterType instanceof ParameterizedType ) {
+      if ( Map.class.isAssignableFrom( (Class) ( (ParameterizedType) parameterType ).getRawType() ) ) {
+        generateWrappedSchemaTypeForMap( entrySequence, parameterType, elementName );
 
-    XmlSchemaComplexType complexType = getComplexTypeForElement( xmlSchema, elementName );
-    if ( complexType == null ) {
-      complexType = new XmlSchemaComplexType( xmlSchema, false );
-
-      XmlSchemaElement globalElement = new XmlSchemaElement( xmlSchema, false );
-      globalElement.setSchemaType( complexType );
-      globalElement.setName( localPartName );
-      xmlSchema.getItems().add( globalElement );
-      xmlSchema.getElements().put( elementName, globalElement );
+      } else if ( Collection.class.isAssignableFrom( (Class) ( (ParameterizedType) parameterType ).getRawType() ) ) {
+        generateSchemaForCollection( entrySequence, parameterType, elementName );
+      }
+    } else {
+      if ( Document.class.isAssignableFrom( (Class) parameterType ) ) {
+        generateSchemaTypeForDocument( entrySequence, elementName );
+      } else {
+        generateSchemaForType( entrySequence, parameterType, elementName, false );
+      }
     }
-    return complexType;
+  }
+
+  /**
+   * Generate schema for collection.
+   *
+   * @param sequence the sequence
+   * @param genericType the generic type
+   * @param partName the part name
+   * @return the q name
+   * @throws Exception the exception
+   */
+  @Override
+  protected QName generateSchemaForCollection( XmlSchemaSequence sequence, Type genericType,
+                                               String partName ) throws Exception {
+
+    if ( genericType instanceof ParameterizedType ) {
+      ParameterizedType parameterizedType = (ParameterizedType) genericType;
+      Type[] parameterizedTypes = parameterizedType.getActualTypeArguments();
+      Type parameterType = parameterizedTypes[0];
+      Type innerParameterType = Object.class;
+
+      if ( parameterType instanceof GenericArrayType ) {
+        log.debug( "not supported" );
+        return null;
+      }
+
+      if ( parameterType instanceof ParameterizedType ) {
+        ParameterizedType innerParameterizedType = (ParameterizedType) parameterType;
+        Type[] innerParameterizedTypes = parameterizedType.getActualTypeArguments();
+        innerParameterType = innerParameterizedTypes[0];
+        XmlSchema xmlSchema = getXmlSchema( schemaTargetNameSpace );
+        String simpleTypeName = getCollectionElementName( parameterType );
+
+        if ( xmlSchema.getTypeByName( simpleTypeName ) == null ) {
+          if ( Collection.class.isAssignableFrom( (Class<?>) innerParameterizedType.getRawType() ) ) {
+            XmlSchemaComplexType xmlSchemaComplexType = new XmlSchemaComplexType( xmlSchema, false );
+            XmlSchemaSequence xmlSchemaSequence = new XmlSchemaSequence();
+            xmlSchemaComplexType.setParticle( xmlSchemaSequence );
+            generateWrappedSchemaTypeForCollection( xmlSchemaSequence, innerParameterizedType, "array" );
+            xmlSchemaComplexType.setName( simpleTypeName );
+            xmlSchema.getItems().add( xmlSchemaComplexType );
+            xmlSchema.getSchemaTypes().put( new QName( xmlSchema.getTargetNamespace(), simpleTypeName ),
+              xmlSchemaComplexType );
+
+            addContentToMethodSchemaType( sequence, new QName( xmlSchema.getTargetNamespace(), simpleTypeName ),
+              partName, true );
+            return new QName( xmlSchema.getTargetNamespace(), simpleTypeName );
+
+          } else if ( Map.class.isAssignableFrom( (Class<?>) innerParameterizedType.getRawType() ) ) {
+            return generateSchemaTypeForMap( sequence, innerParameterType, partName, true );
+
+          }
+        } else {
+          addContentToMethodSchemaType( sequence, new QName( xmlSchema.getTargetNamespace(), simpleTypeName ),
+            partName, true );
+        }
+
+      } else {
+        return generateSchemaForType( sequence, parameterType, partName, true );
+      }
+    } else {
+      return generateSchemaForType( sequence, genericType, partName, true );
+    }
+    return null;
   }
 
   private String getRequestElementSuffix() {
@@ -1069,302 +925,218 @@ public class PentahoDefaultSchemaGenerator implements Java2WSDLConstants, Schema
     return requestElementSuffix;
   }
 
-  protected XmlSchemaComplexType getComplexTypeForElement( XmlSchema xmlSchema, QName name ) {
-    for ( XmlSchemaObject object : xmlSchema.getItems() ) {
-      if ( object instanceof XmlSchemaElement && ( (XmlSchemaElement) object ).getQName().equals( name ) ) {
-        return (XmlSchemaComplexType) ( (XmlSchemaElement) object ).getSchemaType();
-      }
-    }
-    return null;
-  }
+  private XmlSchemaComplexType createSchemaTypeForMethodPart( String localPartName ) {
+    XmlSchema xmlSchema = getXmlSchema( schemaTargetNameSpace );
+    QName elementName = new QName( this.schemaTargetNameSpace, localPartName, this.schema_namespace_prefix );
 
-  protected XmlSchema getXmlSchema( String targetNamespace ) {
-    XmlSchema xmlSchema;
+    XmlSchemaComplexType complexType = getComplexTypeForElement( xmlSchema, elementName );
+    if ( complexType == null ) {
+      complexType = new XmlSchemaComplexType( xmlSchema, false );
 
-    if ( ( xmlSchema = (XmlSchema) schemaMap.get( targetNamespace ) ) == null ) {
-      String targetNamespacePrefix;
+      XmlSchemaElement globalElement = new XmlSchemaElement( xmlSchema, false );
+      globalElement.setName( localPartName );
 
-      if ( targetNamespace.equals( schemaTargetNameSpace )
-        && schema_namespace_prefix != null ) {
-        targetNamespacePrefix = schema_namespace_prefix;
+      boolean disallowAnonTypes = isAnonymousTypesDisallowed();
+      if ( disallowAnonTypes ) {
+        String complexTypeName = localPartName.substring( 0, 1 ).toUpperCase() + localPartName.substring( 1 );
+        complexType.setName( complexTypeName );
+        globalElement.setSchemaTypeName( complexType.getQName() );
+        xmlSchema.getItems().add( complexType );
+        xmlSchema.getSchemaTypes().put( complexType.getQName(), complexType );
       } else {
-        targetNamespacePrefix = generatePrefix();
+        globalElement.setSchemaType( complexType );
       }
 
-
-      xmlSchema = new XmlSchema( targetNamespace, xmlSchemaCollection );
-      xmlSchema.setAttributeFormDefault( getAttrFormDefaultSetting() );
-      xmlSchema.setElementFormDefault( getElementFormDefaultSetting() );
-
-
-      targetNamespacePrefixMap.put( targetNamespace, targetNamespacePrefix );
-      schemaMap.put( targetNamespace, xmlSchema );
-
-      NamespaceMap prefixmap = new NamespaceMap();
-      prefixmap.put( DEFAULT_SCHEMA_NAMESPACE_PREFIX, URI_2001_SCHEMA_XSD );
-      prefixmap.put( targetNamespacePrefix, targetNamespace );
-      xmlSchema.setNamespaceContext( prefixmap );
+      xmlSchema.getItems().add( globalElement );
+      xmlSchema.getElements().put( elementName, globalElement );
     }
-    return xmlSchema;
-  }
+    typeTable.addComplexSchema( localPartName, elementName );
 
-
-  public TypeTable getTypeTable() {
-    return typeTable;
-  }
-
-  public Method[] getMethods() {
-    return methods;
-  }
-
-  protected String generatePrefix() {
-    return NAME_SPACE_PREFIX + prefixCount++;
-  }
-
-  public void setExcludeMethods( List<String> excludeMethods ) {
-    if ( excludeMethods == null ) {
-      excludeMethods = new ArrayList();
-    }
-    this.excludeMethods = excludeMethods;
-  }
-
-  public String getSchemaTargetNameSpace() {
-    return schemaTargetNameSpace;
-  }
-
-  protected void addImport( XmlSchema xmlSchema, QName schemaTypeName ) {
-    NamespacePrefixList map = xmlSchema.getNamespaceContext();
-    if ( map == null || ( ( map instanceof NamespaceMap ) && ( (NamespaceMap) map ).values() == null )
-      || schemaTypeName == null ) {
-      return;
-    }
-    if ( map instanceof NamespaceMap && !( (NamespaceMap) map ).values().
-      contains( schemaTypeName.getNamespaceURI() ) ) {
-      XmlSchemaImport importElement = new XmlSchemaImport( xmlSchema );
-      importElement.setNamespace( schemaTypeName.getNamespaceURI() );
-      xmlSchema.getItems().add( importElement );
-      ( (NamespaceMap) xmlSchema.getNamespaceContext() ).
-        put( generatePrefix(), schemaTypeName.getNamespaceURI() );
-    }
-  }
-
-  public String getAttrFormDefault() {
-    return attrFormDefault;
-  }
-
-  public void setAttrFormDefault( String attrFormDefault ) {
-    this.attrFormDefault = attrFormDefault;
-  }
-
-  public String getElementFormDefault() {
-    return elementFormDefault;
-  }
-
-  public void setElementFormDefault( String elementFormDefault ) {
-    this.elementFormDefault = elementFormDefault;
-  }
-
-  protected XmlSchemaForm getAttrFormDefaultSetting() {
-    if ( FORM_DEFAULT_UNQUALIFIED.equals( getAttrFormDefault() ) ) {
-      return XmlSchemaForm.schemaValueOf( FORM_DEFAULT_UNQUALIFIED );
-    } else {
-      return XmlSchemaForm.schemaValueOf( FORM_DEFAULT_QUALIFIED );
-    }
-  }
-
-  protected XmlSchemaForm getElementFormDefaultSetting() {
-    if ( FORM_DEFAULT_UNQUALIFIED.equals( getElementFormDefault() ) ) {
-      return XmlSchemaForm.schemaValueOf( FORM_DEFAULT_UNQUALIFIED );
-    } else {
-      return XmlSchemaForm.schemaValueOf( FORM_DEFAULT_QUALIFIED );
-    }
-  }
-
-  public List<String> getExtraClasses() {
-    if ( extraClasses == null ) {
-      extraClasses = new ArrayList();
-    }
-    return extraClasses;
-  }
-
-  public void setExtraClasses( List<String> extraClasses ) {
-    this.extraClasses = extraClasses;
-  }
-
-  protected String resolveSchemaNamespace( String packageName ) throws Exception {
-    //if all types must go into the wsdl types schema namespace
-    if ( useWSDLTypesNamespace ) {
-      return (String) pkg2nsmap.get( "all" );
-    } else {
-      if ( pkg2nsmap != null && !pkg2nsmap.isEmpty() ) {
-        //if types should go into namespaces that are mapped against the package name for the type
-        if ( pkg2nsmap.get( packageName ) != null ) {
-          //return that mapping
-          return (String) pkg2nsmap.get( packageName );
-        } else {
-          return getNsGen().schemaNamespaceFromPackageName( packageName ).toString();
-        }
-      } else {
-        // if  pkg2nsmap is null and if not default schema ns found for the custom bean
-        return getNsGen().schemaNamespaceFromPackageName( packageName ).toString();
-      }
-    }
-  }
-
-  public boolean isUseWSDLTypesNamespace() {
-    return useWSDLTypesNamespace;
-  }
-
-  public void setUseWSDLTypesNamespace( boolean useWSDLTypesNamespace ) {
-    this.useWSDLTypesNamespace = useWSDLTypesNamespace;
-  }
-
-  public Map getPkg2nsmap() {
-    return pkg2nsmap;
-  }
-
-  public void setPkg2nsmap( Map pkg2nsmap ) {
-    this.pkg2nsmap = pkg2nsmap;
-  }
-
-  public String getTargetNamespace() {
-    return targetNamespace;
-  }
-
-  protected String getClassName( Class type ) {
-    String name = type.getName();
-    if ( name.indexOf( '$' ) > 0 ) {
-      name = name.replace( '$', '_' );
-    }
-    return name;
-  }
-
-  protected String getSimpleClassName( Class type ) {
-    String simpleClassName = type.getName();
-    int idx = simpleClassName.lastIndexOf( '.' );
-    if ( idx != -1 && idx < ( simpleClassName.length() - 1 ) ) {
-      simpleClassName = simpleClassName.substring( idx + 1 );
-    }
-
-    return simpleClassName.replace( '$', '_' );
-  }
-
-  protected String getQualifiedName( Package packagez ) {
-    if ( packagez != null ) {
-      return packagez.getName();
-    } else {
-      return "";
-    }
-  }
-
-  public void setNonRpcMethods( List<String> nonRpcMethods ) {
-    if ( nonRpcMethods != null ) {
-      this.nonRpcMethods = nonRpcMethods;
-    }
-  }
-
-  public void setAxisService( AxisService service ) {
-    this.service = service;
-  }
-
-
-  public String getCustomSchemaLocation() {
-    return customSchemaLocation;
-  }
-
-  public void setCustomSchemaLocation( String customSchemaLocation ) {
-    this.customSchemaLocation = customSchemaLocation;
-  }
-
-  public String getMappingFileLocation() {
-    return mappingFileLocation;
-  }
-
-  public void setMappingFileLocation( String mappingFileLocation ) {
-    this.mappingFileLocation = mappingFileLocation;
-  }
-
-  protected String getParameterName( Annotation[][] parameterAnnotation,
-                                     int j,
-                                     String[] parameterNames ) {
-    String parameterName = null;
-    if ( parameterAnnotation.length > 0 ) {
-      Annotation[] tempAnnon = parameterAnnotation[j];
-      if ( tempAnnon.length > 0 ) {
-        WebParam para = (WebParam) tempAnnon[0];
-        if ( para != null ) {
-          parameterName = para.name();
-        }
-      }
-    }
-    if ( parameterName == null || "".equals( parameterName ) ) {
-      if ( parameterNames != null && parameterNames.length > j ) {
-        parameterName = parameterNames[j];
-      }
-      if ( parameterName == null || "".equals( parameterName ) ) {
-        parameterName = "args" + j;
-      }
-    }
-    return parameterName;
-  }
-
-  public class MathodComparator implements Comparator {
-    public int compare( Object o1, Object o2 ) {
-      Method method1 = (Method) o1;
-      Method method2 = (Method) o2;
-      String[] values = new String[2];
-      values[0] = method1.getName();
-      values[1] = method2.getName();
-      Arrays.sort( values );
-      if ( values[0].equals( method1.getName() ) ) {
-        return 1;
-      } else {
-        return 0;
-      }
-    }
-  }
-
-  public class PropertyComparator implements Comparator {
-    public int compare( Object o1, Object o2 ) {
-      PropertyDescriptor propertyDescriptor1 = (PropertyDescriptor) o1;
-      PropertyDescriptor propertyDescriptor2 = (PropertyDescriptor) o2;
-      String[] values = new String[2];
-      values[0] = propertyDescriptor1.getName();
-      values[1] = propertyDescriptor2.getName();
-      Arrays.sort( values );
-      if ( values[0].equals( propertyDescriptor1.getName() ) ) {
-        return 0;
-      } else {
-        return 1;
-      }
-    }
+    return complexType;
   }
 
   /**
-   * The util method to prepare the JSR 181 annotated service name from given annotation or for
-   * defaults JSR 181 specifies that the in javax.jws.WebService the parameter serviceName
-   * contains the wsdl:service name to mapp. If its not available then the default will be Simple
-   * name of the class + "Service"
+   * Generate wrapped schema type for map.
    *
-   * NOTE: Code taken from 1.5.6 version of Axis2's org.apache.axis2.deployment.util.Util class
-   *
-   * @param serviceClass the service Class
-   * @param serviceAnnotation a WebService annotation, or null
-   * @return String version of the ServiceName according to the JSR 181 spec
+   * @param sequence the sequence
+   * @param genericParameterType the generic parameter type
+   * @param parameterName the parameter name
+   * @throws Exception the exception
    */
-  public static String getAnnotatedServiceName( Class serviceClass, WebService serviceAnnotation ) {
-    String serviceName = "";
-    if ( serviceAnnotation != null && serviceAnnotation.serviceName() != null ) {
-      serviceName = serviceAnnotation.serviceName();
-    }
-    if ( serviceName.equals( "" ) ) {
-      serviceName = serviceClass.getName();
-      int firstChar = serviceName.lastIndexOf( '.' ) + 1;
-      if ( firstChar > 0 ) {
-        serviceName = serviceName.substring( firstChar );
+  private void generateWrappedSchemaTypeForMap( XmlSchemaSequence sequence, Type genericParameterType,
+                                                String parameterName ) throws Exception {
+    generateSchemaTypeForMap( sequence, genericParameterType, parameterName, false );
+  }
+
+  /**
+   * Generate wrapped schema type for collection.
+   *
+   * @param sequence the sequence
+   * @param genericType the generic type
+   * @param partName the part name
+   * @throws Exception the exception
+   */
+  private void generateWrappedSchemaTypeForCollection( XmlSchemaSequence sequence, Type genericType,
+                                                       String partName ) throws Exception {
+    generateSchemaForCollection( sequence, genericType, partName );
+  }
+
+  /**
+   * Generate wrapped schema type for Enum.
+   *
+   * @param sequence the sequence
+   * @param methodParameterType the generic parameter type
+   * @param parameterName the parameter name
+   * @throws Exception the exception
+   */
+  private void generateWrappedSchemaTypeForEnum( XmlSchemaSequence sequence, String parameterName,
+                                                 Class<?> methodParameterType, boolean isArray ) throws Exception {
+    generateSchemaTypeForEnum( sequence, parameterName, isArray, methodParameterType );
+  }
+
+  private XmlSchemaComplexType createSchemaTypeForFault( String localPartName ) {
+    XmlSchema xmlSchema = getXmlSchema( schemaTargetNameSpace );
+    QName elementName = new QName( this.schemaTargetNameSpace, localPartName, this.schema_namespace_prefix );
+
+    XmlSchemaComplexType complexType = getComplexTypeForElement( xmlSchema, elementName );
+    if ( complexType == null ) {
+      complexType = new XmlSchemaComplexType( xmlSchema, false );
+
+      XmlSchemaElement globalElement = new XmlSchemaElement( xmlSchema, false );
+      globalElement.setName( localPartName );
+
+      boolean disallowAnonTypes = isAnonymousTypesDisallowed();
+      if ( disallowAnonTypes ) {
+        complexType.setName( localPartName );
+        globalElement.setSchemaTypeName( complexType.getQName() );
+        xmlSchema.getItems().add( complexType );
+        xmlSchema.getSchemaTypes().put( complexType.getQName(), complexType );
+      } else {
+        globalElement.setSchemaType( complexType );
       }
-      serviceName += "Service";
+
+      xmlSchema.getItems().add( globalElement );
+      xmlSchema.getElements().put( elementName, globalElement );
+
     }
-    return serviceName;
+    return complexType;
+  }
+
+  private void generateComplexTypeforException() {
+    XmlSchemaSequence sequence = new XmlSchemaSequence();
+    XmlSchema xmlSchema = getXmlSchema( schemaTargetNameSpace );
+    QName elementName = new QName( schemaTargetNameSpace, "Exception", schema_namespace_prefix );
+    XmlSchemaComplexType complexType = new XmlSchemaComplexType( xmlSchema, false );
+    complexType.setName( "Exception" );
+    xmlSchema.getItems().add( complexType );
+    xmlSchema.getSchemaTypes().put( elementName, complexType );
+    typeTable.addComplexSchema( Exception.class.getName(), elementName );
+    QName schemaTypeName = new QName( Java2WSDLConstants.URI_2001_SCHEMA_XSD, "string" );
+    addContentToMethodSchemaType( sequence, schemaTypeName, "Message", false );
+    complexType.setParticle( sequence );
+  }
+
+  /**
+   * Gets the collection element name.
+   *
+   * @param genericType the generic type
+   * @return the collection element name
+   */
+  private String getCollectionElementName( Type genericType ) {
+    if ( genericType instanceof ParameterizedType ) {
+      ParameterizedType parameterizedType = (ParameterizedType) genericType;
+      if ( Map.class.isAssignableFrom( (Class<?>) parameterizedType.getRawType() ) ) {
+        Type[] parameterizedArgs = parameterizedType.getActualTypeArguments();
+        String first = getCollectionElementName( parameterizedArgs[0] );
+        String second = getCollectionElementName( parameterizedArgs[1] );
+        return "MapOf" + first + "And" + second;
+
+      } else if ( Collection.class
+        .isAssignableFrom( (Class<?>) parameterizedType.getRawType() ) ) {
+        Type[] parameterizedArgs = parameterizedType.getActualTypeArguments();
+        return "ArrayOf" + getCollectionElementName( parameterizedArgs[0] );
+      } else {
+        return getCollectionElementName( parameterizedType );
+      }
+
+    } else {
+      return ( (Class) genericType ).getSimpleName();
+
+    }
+
+  }
+
+  private boolean isAnonymousTypesDisallowed() {
+    boolean disallowAnonTypes = false;
+    Parameter param = service.getParameter( Java2WSDLConstants.DISALLOW_ANON_TYPES_OPTION_LONG );
+    if ( param != null ) {
+      disallowAnonTypes = JavaUtils.isTrueExplicitly( param.getValue() );
+    }
+    return disallowAnonTypes;
+  }
+
+  /**
+   * Generate schema type for Enum.
+   *
+   * @param sequence the sequence
+   * @param classType the generic parameter type
+   * @param parameterName the parameter name
+   * @param isArrayType parameter is an array or not
+   * @return the q name
+   * @throws Exception the exception
+   */
+  private QName generateSchemaTypeForEnum( XmlSchemaSequence sequence, String parameterName, boolean isArrayType,
+                                           Class<?> classType ) {
+    if ( Enum.class .isAssignableFrom( classType ) ) {
+      XmlSchema xmlSchema = getXmlSchema( Constants.AXIS2_ENUM_NAMESPACE_URI );
+      String targetNamespacePrefix = targetNamespacePrefixMap
+        .get( Constants.AXIS2_ENUM_NAMESPACE_URI );
+      String enumClass = classType.getName().substring( classType.getName().lastIndexOf( "$" ) + 1,
+        classType.getName().length() );
+      QName enumQname = new QName( Constants.AXIS2_ENUM_NAMESPACE_URI, enumClass, targetNamespacePrefix );
+      // check weather this enum class have already added to schema
+      if ( typeTable.getSimpleTypeEnum( classType.getName() ) == null ) {
+        XmlSchemaSimpleType simpleType = new XmlSchemaSimpleType( xmlSchema, false );
+        simpleType.setName( enumClass );
+        XmlSchemaSimpleTypeRestriction restriction = new XmlSchemaSimpleTypeRestriction();
+        restriction.setBaseTypeName( Constants.XSD_STRING );
+        List enumList = Arrays.asList( classType.getEnumConstants() );
+        for ( Object enumObj : enumList ) {        // add all enum constants to restriction facet
+          restriction.getFacets().add( new XmlSchemaEnumerationFacet( enumObj.toString(), false ) );
+        }
+        simpleType.setContent( restriction );
+        xmlSchema.getItems().add( simpleType );       // add enum to wsdl
+        typeTable.addSimpleTypeEnum( classType.getName(), enumQname ); //add to typetable
+      }
+
+      XmlSchemaElement entryElement = new XmlSchemaElement( xmlSchema, false );
+      entryElement.setName( Constants.ENUM_ELEMENT_NAME );
+      entryElement.setNillable( true );
+      entryElement.setSchemaTypeName( enumQname );
+      QName schemaTypeName = new QName( Constants.AXIS2_ENUM_NAMESPACE_URI, enumClass );
+      addImport( getXmlSchema( schemaTargetNameSpace ), schemaTypeName );
+      if ( sequence != null ) {
+        XmlSchemaComplexType parameterType = new XmlSchemaComplexType( xmlSchema, false );
+        QName parameterTypeName = new QName( Constants.AXIS2_ENUM_NAMESPACE_URI, enumClass, targetNamespacePrefix );
+        XmlSchemaSequence parameterSequence = new XmlSchemaSequence();
+        parameterSequence.getItems().add( entryElement );
+        parameterType.setParticle( parameterSequence );
+
+        XmlSchemaElement parameterElement = new XmlSchemaElement( xmlSchema, false );
+        parameterElement.setName( parameterName );
+        if ( isArrayType ) {
+          parameterElement.setMaxOccurs( Long.MAX_VALUE );
+        }
+        parameterElement.setMinOccurs( 0 );
+        parameterElement.setNillable( true );
+        sequence.getItems().add( parameterElement );
+        parameterElement.setSchemaTypeName( parameterTypeName );
+        return parameterTypeName;
+      }
+      return enumQname;
+    } else {
+      // if classType is not enum
+      return null;
+    }
   }
 }
