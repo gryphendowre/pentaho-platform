@@ -555,15 +555,38 @@ public class PentahoDefaultSchemaGenerator extends DefaultSchemaGenerator {
   @Override
   protected QName generateSchema( Class<?> javaClassType ) throws Exception {
     Class javaType = javaClassType;
+    String name = null;
+    QName schemaTypeName = null;
+    boolean isSchemaLoopedFound = false;
     if ( javaClassType.isInterface() ) {
-      Object pentahoObj = PentahoSystem.get( javaClassType, null );
-      if ( pentahoObj != null ) {
-        javaType = pentahoObj.getClass();
+      List<? extends Object> pentahoObjs = PentahoSystem.getAll( javaClassType, null );
+
+      if ( !pentahoObjs.isEmpty() ) {
+        for ( Object pentahoObj : pentahoObjs ) {
+          if ( pentahoObj != null ) {
+            javaType = pentahoObj.getClass();
+            name = getClassName( javaType );
+            schemaTypeName = typeTable.getComplexSchemaType( name );
+            if ( schemaTypeName == null ) {
+              isSchemaLoopedFound = true;
+              break;
+            }
+          }
+        }
+      } else {
+        // The get vs getAll methods return different values, we need to verify both ways
+        Object pentahoObj = PentahoSystem.get( javaClassType, null );
+        if ( pentahoObj != null ) {
+          javaType = pentahoObj.getClass();
+        }
       }
     }
 
-    String name = getClassName( javaType );
-    QName schemaTypeName = typeTable.getComplexSchemaType( name );
+    if ( !isSchemaLoopedFound ) {
+      name = getClassName( javaType );
+      schemaTypeName = typeTable.getComplexSchemaType( name );
+    }
+
     if ( schemaTypeName == null ) {
       String simpleName = getSimpleClassName( javaType );
 
@@ -1107,6 +1130,12 @@ public class PentahoDefaultSchemaGenerator extends DefaultSchemaGenerator {
         simpleType.setContent( restriction );
         xmlSchema.getItems().add( simpleType );       // add enum to wsdl
         typeTable.addSimpleTypeEnum( classType.getName(), enumQname ); //add to typetable
+
+        // It's also seen that sometimes Enums are searched for in the ComplexTypeName, some are added there automatically
+        // So let's ensure that others are as well.
+        if ( typeTable.getComplexSchemaType( classType.getName() ) == null ) {
+          typeTable.addComplexSchema( classType.getName(), enumQname );
+        }
       }
 
       XmlSchemaElement entryElement = new XmlSchemaElement( xmlSchema, false );

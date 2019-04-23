@@ -251,6 +251,62 @@ not directly from the PentahoObjectFactory. -->
 
   <bean id="IDatabaseDialectService" class="org.pentaho.database.service.DatabaseDialectService" scope="singleton"/>
 
+  <bean class="org.pentaho.platform.engine.core.system.BaseSession">
+    <pen:publish as-type="INTERFACES" />
+    <pen:attributes>
+      <pen:attr key="priority" value="20"/>
+    </pen:attributes>
+  </bean>
+  <bean class="org.pentaho.database.model.DatabaseType">
+    <pen:publish as-type="INTERFACES" />
+    <pen:attributes>
+      <pen:attr key="priority" value="20"/>
+    </pen:attributes>
+  </bean>
+  
+  <bean class="org.pentaho.metadata.model.concept.Concept">
+    <pen:publish as-type="INTERFACES" />
+    <pen:attributes>
+      <pen:attr key="priority" value="30"/>
+    </pen:attributes>
+  </bean>
+  <bean class="org.pentaho.metadata.model.SqlPhysicalTable">
+    <pen:publish as-type="INTERFACES"/>
+    <pen:attributes>
+      <pen:attr key="priority" value="20"/>
+    </pen:attributes>
+  </bean>
+  <bean class="org.pentaho.metadata.model.InlineEtlPhysicalTable">
+    <pen:publish as-type="INTERFACES"/>
+    <pen:attributes>
+      <pen:attr key="priority" value="10"/>
+    </pen:attributes>
+  </bean>
+  <bean class="org.pentaho.metadata.model.SqlPhysicalColumn">
+    <pen:publish as-type="INTERFACES"/>
+    <pen:attributes>
+      <pen:attr key="priority" value="20"/>
+    </pen:attributes>
+  </bean>
+  <bean class="org.pentaho.metadata.model.InlineEtlPhysicalColumn">
+    <pen:publish as-type="INTERFACES"/>
+    <pen:attributes>
+      <pen:attr key="priority" value="10"/>
+    </pen:attributes>
+  </bean>
+  <bean class="org.pentaho.metadata.model.SqlPhysicalModel">
+    <pen:publish as-type="INTERFACES"/>
+    <pen:attributes>
+      <pen:attr key="priority" value="20"/>
+    </pen:attributes>
+  </bean>
+  <bean class="org.pentaho.metadata.model.InlineEtlPhysicalModel">
+    <pen:publish as-type="INTERFACES"/>
+    <pen:attributes>
+      <pen:attr key="priority" value="10"/>
+    </pen:attributes>
+  </bean>
+
   <bean id="IDatasourceMgmtService" class="org.pentaho.platform.repository.JcrBackedDatasourceMgmtService"
         scope="singleton">
     <constructor-arg ref="unifiedRepository"/>
